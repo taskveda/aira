@@ -1,0 +1,43 @@
+# Ras configuration
+# Copy secrets into environment variables (see README) — never paste keys here.
+
+provider: deepseek        # deepseek = cloud API (zero local RAM/heat) | ollama = free local model
+
+deepseek:
+  model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast"  # fast, direct answers + real tool calling (free via Cloudflare)
+  api_key_env: DEEPSEEK_API_KEY                            # loaded from ~/ras/.env
+  base_url: https://api.cloudflare.com/client/v4/accounts/7a1bbfa08726f2a075d7533a815d8115/ai/v1
+
+ollama:
+  model: qwen3:1.7b     # installed & free. Larger 4b: ollama pull qwen3:4b (~2.5GB)
+  base_url: http://localhost:11434/v1
+
+slack:
+  bot_token_env: RAS_SLACK_BOT_TOKEN
+  app_token_env: RAS_SLACK_APP_TOKEN
+  digest_channel: "#general"   # channel where email digests and scheduled jobs post
+
+discord:
+  webhook_env: RAS_DISCORD_WEBHOOK   # optional escalation backup (free Discord server webhook)
+
+email:
+  enabled: false
+  imap_host: imap.gmail.com
+  user_env: RAS_EMAIL_USER
+  pass_env: RAS_EMAIL_PASS           # Gmail App Password, NOT your login password
+  poll_minutes: 5
+  escalate_minutes: 30               # digest not acked in this long -> Discord webhook ping
+
+tts:
+  voice: en-IN-NeerjaNeural          # any edge-tts voice, e.g. en-US-JennyNeural
+
+safety:
+  auto: false                        # true = never ask for approval (not recommended)
+
+jobs:                                # scheduled tasks ("cron" is 5-field cron syntax)
+  - name: morning_brief
+    cron: "0 9 * * *"
+    task: "Scan my email for the last 24 hours, summarize the 3 most important items, and suggest replies."
+    channel: "#general"
+
+max_history: 40
