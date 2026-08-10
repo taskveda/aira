@@ -32,11 +32,11 @@ class Scheduler:
         try:
             if job.get("type") == "automation":
                 from .automation import run_automation
-                res = run_automation(self.config, job.get("name", ""), n=job.get("count", 5))
+                res = run_automation(self.config, job.get("action", ""), n=job.get("count", 5))
                 channel = job.get("channel") or self.config.digest_channel()
                 status = "done" if res.get("ok") else f"FAILED: {res.get('error')}"
                 session = self.session_factory(channel)
-                session.post_text(f"*Scheduled automation: {job.get('name')}*\n{status}")
+                session.post_text(f"*Scheduled automation: {job.get('action', job.get('name'))}*\n{status}")
                 return
             channel = job.get("channel") or self.config.digest_channel()
             session = self.session_factory(channel)

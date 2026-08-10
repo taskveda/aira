@@ -82,6 +82,36 @@ Create a Discord server → Server Settings → Integrations → **Webhooks** �
 
 One-shot mode for scripts: `./venv/bin/python -m aira.main --once "summarize my downloads folder"`
 
+## Content automation
+
+Aira has scheduled content jobs (see `config.yaml` → `jobs`, `type: automation`)
+for your daily content engine. Run any of them manually:
+
+```bash
+./venv/bin/python -m aira.main --automate carousel   # Instagram carousel plan -> ~/Instagram_Content
+./venv/bin/python -m aira.main --automate linkedin   # LinkedIn post -> ~/LinkedIn_Content
+./venv/bin/python -m aira.main --automate briefing   # daily AI briefing + ntfy phone push
+./venv/bin/python -m aira.main --automate blog --count 2   # 2 SEO/AEO/GEO posts -> blog repo + git push
+```
+
+- **carousel** — writes the next `NNN_Daily_Content/` folder with
+  `Carousel_Plan.md` (3 fresh topics) + one full 10-slide plan + image prompts
+  per topic. Uses shared memory + guard rules so topics never repeat.
+- **linkedin** — one daily, Vaibhav-style news→meaning→lesson→question post.
+- **briefing** — reuses `~/rohit-daily-briefing/research.py` (no LLM), then
+  pushes a summary to your phone via ntfy.
+- **blog** — writes `n` production SEO/AEO/GEO + LLM-optimized posts (JSON-LD,
+  canonical, speakable, FAQ, sourced facts) into
+  `~/Dev/taskveda-z2c-blog/blog/<slug>/index.html`, then **commits + pushes**
+  to the blog git repo. Fully automated — no review step.
+
+All four log their result to the shared memory system
+(`~/ai-daily-automation/shared/memory.py`) so past topics and facts are consistent.
+
+Scheduled (in `config.yaml` by default): carousel Mon–Sat 8 PM, LinkedIn daily
+9 AM, briefing 8:30 AM, and blog posts Mon/Wed/Fri (2 each ≈ 6/week).
+
+
 ## Example commands (DM Aira in Slack)
 
 - "find the largest file in ~/Downloads"

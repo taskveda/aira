@@ -42,26 +42,26 @@ jobs:                                # scheduled tasks ("cron" is 5-field cron s
 
   - name: instagram_carousel
     type: automation
+    action: carousel
     cron: "0 20 * * 1-6"              # Mon-Sat 8 PM IST (Instagram content slot)
-    name: carousel
     channel: "#general"
 
   - name: linkedin_post
     type: automation
+    action: linkedin
     cron: "0 9 * * *"                 # 9 AM IST daily (LinkedIn slot)
-    name: linkedin
     channel: "#general"
 
   - name: daily_briefing_ntfy
     type: automation
+    action: briefing
     cron: "30 8 * * *"                # 8:30 AM IST, pushes summary to phone via ntfy
-    name: briefing
     channel: "#general"
 
   - name: seo_blog_posts
     type: automation
+    action: blog
     cron: "0 12 * * 1,3,5"            # Mon/Wed/Fri midday -> ~4-6 posts/week
-    name: blog
     count: 2
     channel: "#general"
 
