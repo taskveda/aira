@@ -1,12 +1,12 @@
 # Aira
 
-A free, self-hosted clone of **"Jerry"** — the AI personal assistant Vaibhav Sisinty (GrowthSchool/Outskill) demos in his classes — renamed **Aira**.
+**Your own AI chief of staff — local, self-hosted, yours.**
 
-Aira lives on your Mac, listens on **Slack**, thinks with **DeepSeek** (or a 100% free local model), and can run anything you ask: shell commands, files, apps, web research, email digests, scheduled jobs, and spoken voice notes.
+Aira lives on your Mac, listens on **Slack**, speaks out loud, and thinks with **DeepSeek** (or a 100% free local model). It does real work on your behalf — shell commands, files, apps, web research, email digests, scheduled jobs, and voice notes — so you can ask in plain language and get results, not answers.
 
 ## Capabilities
 
-| Job (as in Vaibhav's Jerry) | Aira equivalent |
+| Area | What Aira does |
 |---|---|
 | Slack assistant (calendar, email, files) | Slack DM / thread frontend |
 | Email gatekeeper | Gmail IMAP scan → DeepSeek triage → digest with "Got it ✅" + Discord escalation |
