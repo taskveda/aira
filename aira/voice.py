@@ -7,6 +7,7 @@ Zero new dependencies: ffmpeg ships via Homebrew, Whisper uses the same
 Cloudflare account already in config.yaml, TTS is the existing edge-tts.
 """
 
+import difflib
 import re
 import subprocess
 import tempfile
@@ -21,6 +22,29 @@ from .config import DATA
 STT_MODEL = "@cf/openai/whisper-large-v3-turbo"
 
 WAKE_RE = re.compile(r"\b(?:hey\s+)?airas?\b", re.IGNORECASE)
+
+# Tolerant matcher: Whisper/Live STT hears "Hey Aira" as many spellings —
+# "Era", "Aida", "Eyra", "Ayra", "Aira", "Aidas", … A fuzzy match on the
+# spoken word (not the exact spelling) is what makes the wake word reliable.
+_WAKE_TARGETS = ("aira", "eira", "era", "aida", "eyra", "ayra", "ara")
+
+
+def is_wake(text):
+    """True if the transcript sounds like the Aira wake word (fuzzy, not exact)."""
+    if not text:
+        return False
+    words = re.findall(r"[a-z']+", text.lower())
+    for word in words:
+        if not 2 <= len(word) <= 6:
+            continue
+        for target in _WAKE_TARGETS:
+            if "hey" not in words and word == "hey":
+                continue
+            ratio = difflib.SequenceMatcher(None, word, target).ratio()
+            need = 0.62 if "hey" in words else 0.7
+            if ratio >= need:
+                return True
+    return False
 APPROVE_RE = re.compile(r"\b(?:yes|yep|yeah|approve|okay|ok|do it|go ahead)\b", re.IGNORECASE)
 DENY_RE = re.compile(r"\b(?:no|nope|deny|cancel|stop|don't|dont)\b", re.IGNORECASE)
 
@@ -209,7 +233,7 @@ def run_voice(cfg):
                     continue
                 heard = (stt.get("text") or "").strip()
                 print(f"[heard] {heard!r}")
-                if not heard or not WAKE_RE.search(heard):
+                if not heard or not is_wake(heard):
                     continue
                 # Woken up — greet, then listen for the task.
                 if first_greeting:

@@ -87,7 +87,8 @@ def run_assistant(cfg):
                     time.sleep(1)
                     continue
                 heard = (stt.get("text") or "").strip()
-                if not heard or not voice_mod.WAKE_RE.search(heard):
+                print(f"[heard] {heard!r}")
+                if not heard or not voice_mod.is_wake(heard):
                     continue
                 voice_mod.beep()
                 voice_mod.speak(_greeting(first_greeting), cfg)

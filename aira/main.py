@@ -12,6 +12,7 @@ def main(argv=None):
     parser.add_argument("--once", metavar="TASK", help="run a single task headlessly and exit")
     parser.add_argument("--voice", action="store_true", help="run hands-free voice mode (\"Hey Aira\")")
     parser.add_argument("--popup", action="store_true", help="run the Siri-style overlay popup (hotkey: Option+Space)")
+    parser.add_argument("--assistant", action="store_true", help="run Aira full-time: popup + text + \"Hey Aira\" all in one")
     parser.add_argument("--automate", metavar="TYPE", help="run one content automation and exit: carousel | linkedin | briefing | blog")
     parser.add_argument("--count", type=int, default=5, help="number of blog posts to generate (blog automation only)")
     args = parser.parse_args(argv)
