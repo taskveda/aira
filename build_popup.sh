@@ -8,7 +8,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 
 swiftc -O \
-  -framework AppKit -framework AVFoundation -framework Carbon \
+  -framework AppKit -framework AVFoundation -framework Carbon -framework CoreGraphics \
   popup/AiraPopup.swift \
   -o "$APP/Contents/MacOS/AiraPopup"
 

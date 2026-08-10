@@ -49,23 +49,59 @@ APPROVE_RE = re.compile(r"\b(?:yes|yep|yeah|approve|okay|ok|do it|go ahead)\b", 
 DENY_RE = re.compile(r"\b(?:no|nope|deny|cancel|stop|don't|dont)\b", re.IGNORECASE)
 
 
+_MIC_DEVICE = None
+
+
+def detect_mic_device():
+    """Return the ffmpeg avfoundation device id for the built-in mic.
+
+    'default' is unreliable on some Macs (it can point at a virtual device like
+    Teams that captures nothing), so we look for the real microphone once and
+    cache it. Falls back to ':0' (first audio device) — not the classic 'default'.
+    """
+    global _MIC_DEVICE
+    if _MIC_DEVICE:
+        return _MIC_DEVICE
+    try:
+        proc = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-f", "avfoundation", "-list_devices", "true", "-i", ""],
+            capture_output=True, text=True, timeout=10,
+        )
+        out = proc.stderr + proc.stdout
+        idx = None
+        for line in out.splitlines():
+            low = line.lower()
+            if "microphone" in low or "built-in" in low:
+                matches = re.findall(r"\[(\d+)\]\s+", line)
+                if matches:
+                    idx = int(matches[-1])
+                    break
+        _MIC_DEVICE = f":{idx}" if idx is not None else ":0"
+    except Exception:
+        _MIC_DEVICE = ":0"
+    return _MIC_DEVICE
+
+
 def record_mic(out_path, seconds):
-    """Record <seconds> of mono 16k PCM from the default mic via ffmpeg."""
-    cmd = [
-        "ffmpeg", "-y", "-loglevel", "error",
-        "-f", "avfoundation", "-i", "default",
-        "-t", str(seconds), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le",
-        str(out_path),
-    ]
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=seconds + 20)
+    """Record <seconds> of mono 16k PCM from the built-in mic via ffmpeg."""
+    device = detect_mic_device()
+    proc = subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "avfoundation", "-i", device,
+         "-t", str(seconds), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(out_path)],
+        capture_output=True, text=True, timeout=seconds + 20,
+    )
+    if proc.returncode != 0:
+        print(f"[record_mic] ffmpeg failed with code {proc.returncode}, stderr={proc.stderr}, stdout={proc.stdout}")
     ok = proc.returncode == 0 and Path(out_path).exists() and Path(out_path).stat().st_size > 0
     if not ok:
-        # Fallback: first audio device by index (":0" = audio 0, no video).
+        # Last resort: fall back to the classic 'default'.
         proc = subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-f", "avfoundation", "-i", ":0",
+            ["ffmpeg", "-y", "-loglevel", "error", "-f", "avfoundation", "-i", "default",
              "-t", str(seconds), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(out_path)],
             capture_output=True, text=True, timeout=seconds + 20,
         )
+        if proc.returncode != 0:
+            print(f"[record_mic] fallback failed with code {proc.returncode}, stderr={proc.stderr}, stdout={proc.stdout}")
         ok = proc.returncode == 0 and Path(out_path).exists() and Path(out_path).stat().st_size > 0
     if not ok:
         err = (proc.stderr or proc.stdout or "").strip().splitlines()

@@ -1,6 +1,8 @@
 import AppKit
 import AVFoundation
 import Carbon
+import CoreGraphics
+import CoreFoundation
 
 let API_BASE = "http://127.0.0.1:8756"
 
@@ -29,6 +31,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
     var statusItem: NSStatusItem?
     var hotKeyRef: EventHotKeyRef?
+    var controlTap: CFMachPort?
+    private var controlDownAt: TimeInterval = 0
+    private var controlUpAt: TimeInterval = 0
 
     // MARK: - Lifecycle
 
@@ -37,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         setupStatusItem()
         setupPanel()
         installHotKey()
+        installControlTap()
         centerTop()
         startApprovalPolling()
         startSummonPolling()
@@ -108,7 +114,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         statusLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
         statusLabel.textColor = NSColor(white: 1, alpha: 0.65)
-        statusLabel.stringValue = "Option+Space to summon · mic or type"
+        statusLabel.stringValue = "Double-tap Control to summon · mic or type"
         statusLabel.lineBreakMode = .byTruncatingTail
 
         let close = NSButton(title: "", target: self, action: #selector(hidePopup))
@@ -189,7 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
             statusLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 0),
         ])
 
-        addInfoBubble("Aira is ready — press Option+Space or the menu-bar icon to summon. Type or tap the mic to talk.")
+        addInfoBubble("Aira is ready — double-tap Control or click the menu-bar icon to summon. Type or tap the mic to talk.")
     }
 
     func centerTop() {
@@ -518,6 +524,96 @@ extension AppDelegate {
         InstallEventHandler(GetApplicationEventTarget(), hotKeyHandler, 1, &eventType, nil, nil)
         var hotKeyID = EventHotKeyID(signature: OSType(0x52415331), id: 1)
         RegisterEventHotKey(UInt32(kVK_Space), UInt32(optionKey), hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+    }
+}
+
+// MARK: - Double-tap Control (CD eject summon)
+
+private let kVK_Control: CGKeyCode = 0x3B
+private let kVK_RightControl: CGKeyCode = 0x3E
+private let controlTapCallback: @convention(c) (CGEventTapProxy, CGEventType, CGEvent, UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? = { _, type, event, _ in
+    switch type {
+    case .keyDown, .keyUp:
+        let code = event.getIntegerValueField(.keyboardEventKeycode)
+        if code == kVK_Control || code == kVK_RightControl {
+            DispatchQueue.main.async { AppDelegate.instance?.handleControlTap(isDown: type == .keyDown) }
+        }
+    case .tapDisabledByTimeout, .tapDisabledByUserInput:
+        if let tap = AppDelegate.instance?.controlTap {
+            CGEvent.tapEnable(tap: tap, enable: true)
+        }
+    default:
+        break
+    }
+    return Unmanaged.passUnretained(event)
+}
+
+extension AppDelegate {
+    func installControlTap() {
+        let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue)
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: CGEventMask(mask),
+            callback: controlTapCallback,
+            userInfo: nil
+        ) else {
+            statusLabel.stringValue = "Aira needs Accessibility access — System Settings → Privacy & Security → Accessibility"
+            NSLog("Aira: Control double-tap disabled — Accessibility permission not granted.")
+            return
+        }
+        controlTap = tap
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        let thread = Thread {
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, CFRunLoopMode.commonModes)
+            CFRunLoopRun()
+        }
+        thread.name = "AiraControlTap"
+        thread.start()
+    }
+
+    func handleControlTap(isDown: Bool) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if isDown {
+            if controlUpAt > controlDownAt && now - controlUpAt <= 0.4 && now - controlDownAt <= 0.6 {
+                doubleTapSummon()
+            }
+            controlDownAt = now
+        } else {
+            controlUpAt = now
+        }
+    }
+
+    func doubleTapSummon() {
+        if panel.isVisible {
+            showPopup()
+        } else {
+            showPopupCD()
+        }
+        speak("Hey Rohit, Aira here. What are we building today?")
+    }
+
+    func showPopupCD() {
+        centerTop()
+        panel.makeKeyAndOrderFront(nil)
+        guard let layer = panel.contentView?.layer else {
+            showPopup()
+            return
+        }
+        let eject = CASpringAnimation(keyPath: "transform")
+        let from = CATransform3DTranslate(CATransform3DMakeScale(0.7, 0.7, 1), 0, -160, 0)
+        eject.fromValue = from
+        eject.toValue = CATransform3DIdentity
+        eject.damping = 13
+        eject.stiffness = 150
+        eject.mass = 0.7
+        eject.initialVelocity = 8
+        eject.duration = eject.settlingDuration
+        layer.transform = CATransform3DIdentity
+        layer.add(eject, forKey: "cdEject")
+        NSApp.activate(ignoringOtherApps: true)
+        inputField.becomeFirstResponder()
     }
 }
 

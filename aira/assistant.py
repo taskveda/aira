@@ -16,6 +16,9 @@ from pathlib import Path
 from . import voice as voice_mod
 from .webui import make_server, Handler, HOST, PORT
 
+# Debug: log the detected mic device at startup
+print(f"[assistant] using mic device: {voice_mod.detect_mic_device()}")
+
 
 def _ask(text):
     """Route a message (typed or spoken) through the shared brain + history."""
