@@ -38,4 +38,4 @@ class Scheduler:
             reply = brain.run([{"role": "user", "content": job.get("task", "")}])
             session.post_text(f"*Scheduled: {job.get('name')}*\n{reply}")
         except Exception as exc:
-            print(f"[ras] job error: {exc}")
+            print(f"[aira] job error: {exc}")

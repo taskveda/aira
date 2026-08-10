@@ -23,14 +23,14 @@ class CliSession:
     def post_text(self, text, channel_override=None):
         print(text)
 
-    def post_file(self, path, title="Ras output"):
+    def post_file(self, path, title="Aira output"):
         print(f"[file] {title}: {path}")
 
     def ask_approval(self, action_id, question, force_auto=False):
         if force_auto:
             return True
         try:
-            answer = input(f"Ras asks: {question} (y/n): ").strip().lower()
+            answer = input(f"Aira asks: {question} (y/n): ").strip().lower()
         except (EOFError, KeyboardInterrupt):
             print("[denied by default]")
             return False
@@ -49,9 +49,9 @@ def run(cfg, once=None):
     history = []
     if once:
         history = [{"role": "user", "content": once}]
-        print(brain.run(history))
+        print(brain.respond(history))
         return
-    print("Ras CLI — type a task (or 'quit'). Destructive commands ask for approval.")
+    print("Aira CLI — type a task (or 'quit'). Destructive commands ask for approval.")
     while True:
         try:
             prompt = input("\nYou: ").strip()
@@ -62,7 +62,7 @@ def run(cfg, once=None):
         if prompt.lower() in ("quit", "exit"):
             break
         history.append({"role": "user", "content": prompt})
-        reply = brain.run(history)
-        print("\nRas:", reply)
+        reply = brain.respond(history)
+        print("\nAira:", reply)
         _speak(reply, cfg)
         history.append({"role": "assistant", "content": ""})

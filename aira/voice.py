@@ -1,4 +1,4 @@
-"""Voice layer for Ras — "Hey Ras" hands-free on macOS.
+"""Voice layer for Aira — "Hey Aira" hands-free on macOS.
 
 Pipeline: ffmpeg (mic capture) → Cloudflare Workers AI Whisper (STT)
 → Brain (think/act) → edge-tts + afplay (speak).
@@ -20,7 +20,7 @@ from .config import DATA
 
 STT_MODEL = "@cf/openai/whisper-large-v3-turbo"
 
-WAKE_RE = re.compile(r"\b(?:hey\s+)?rass?\b", re.IGNORECASE)
+WAKE_RE = re.compile(r"\b(?:hey\s+)?airas?\b", re.IGNORECASE)
 APPROVE_RE = re.compile(r"\b(?:yes|yep|yeah|approve|okay|ok|do it|go ahead)\b", re.IGNORECASE)
 DENY_RE = re.compile(r"\b(?:no|nope|deny|cancel|stop|don't|dont)\b", re.IGNORECASE)
 
@@ -54,7 +54,7 @@ def transcribe(wav_path, config):
     api_key = config.api_key()
     base = config.base_url().rstrip("/")
     if not api_key or "api.cloudflare.com" not in base:
-        return {"ok": False, "error": "voice needs Cloudflare Workers AI config + DEEPSEEK_API_KEY in ~/ras/.env"}
+        return {"ok": False, "error": "voice needs Cloudflare Workers AI config + DEEPSEEK_API_KEY in ~/aira/.env"}
     # The REST run route is /ai/run/<model> — the /v1 suffix only applies
     # to the OpenAI-compatible chat endpoint, so strip it if present.
     run_base = base[: -len("/v1")] if base.endswith("/v1") else base
@@ -75,9 +75,8 @@ def transcribe(wav_path, config):
     return {"ok": True, "text": text}
 
 
-def is_silent(wav_path, threshold_db=-35.0):
-    """True if the clip is effectively silence. Cheap local check via ffmpeg
-    so we don't burn a Cloudflare STT call on an empty room."""
+def _mean_volume_db(wav_path):
+    """Return the mean audio level in dB from ffmpeg volumedetect, or None."""
     proc = subprocess.run(
         ["ffmpeg", "-i", str(wav_path), "-af", "volumedetect", "-f", "null", "-"],
         capture_output=True, text=True, timeout=30,
@@ -85,10 +84,17 @@ def is_silent(wav_path, threshold_db=-35.0):
     for line in (proc.stderr or "").splitlines():
         if "mean_volume" in line:
             try:
-                return float(line.split("mean_volume:")[1].split("dB")[0]) < threshold_db
+                return float(line.split("mean_volume:")[1].split("dB")[0])
             except (ValueError, IndexError):
-                return False
-    return True
+                return None
+    return None
+
+
+def is_silent(wav_path, threshold_db=-35.0):
+    """True if the clip is effectively silence. Cheap local check via ffmpeg
+    so we don't burn a Cloudflare STT call on an empty room."""
+    vol = _mean_volume_db(wav_path)
+    return vol is None or vol < threshold_db
 
 
 def speak(text, config):
@@ -142,7 +148,7 @@ class VoiceSession:
     def post_text(self, text, channel_override=None):
         print(text)
 
-    def post_file(self, path, title="Ras output"):
+    def post_file(self, path, title="Aira output"):
         print(f"[file] {title}: {path}")
 
     def ask_approval(self, action_id, question, force_auto=False):
@@ -153,6 +159,20 @@ class VoiceSession:
     def make_executor(self):
         from .executor import ToolExecutor
         return ToolExecutor(self, self.config)
+
+
+def _greeting(first=False):
+    """Time-of-day greeting for a wake-up."""
+    hour = time.localtime().tm_hour
+    if hour < 12:
+        part = "good morning"
+    elif hour < 17:
+        part = "good afternoon"
+    else:
+        part = "good evening"
+    if first:
+        return f"Hey Rohit, {part}. How are you doing?"
+    return f"Hey Rohit, {part}. What do you need?"
 
 
 def run_voice(cfg):
@@ -167,7 +187,7 @@ def run_voice(cfg):
     first_greeting = True
     history = []
 
-    print('Ras voice mode — say "Hey Ras" to wake me. Ctrl+C to stop.')
+    print('Aira voice mode — say "Hey Aira" to wake me. Ctrl+C to stop.')
     with tempfile.TemporaryDirectory() as tmpdir:
         probe = Path(tmpdir) / "probe.wav"
         utterance = Path(tmpdir) / "utterance.wav"
@@ -178,6 +198,8 @@ def run_voice(cfg):
                     print(f"[mic] {rec['error']} — check mic permission for the terminal app")
                     time.sleep(3)
                     continue
+                vol = _mean_volume_db(probe)
+                print(f"[probe] mean={vol}dB silent={is_silent(probe)}")
                 if is_silent(probe):
                     continue
                 stt = transcribe(probe, cfg)
@@ -186,15 +208,17 @@ def run_voice(cfg):
                     time.sleep(1)
                     continue
                 heard = (stt.get("text") or "").strip()
+                print(f"[heard] {heard!r}")
                 if not heard or not WAKE_RE.search(heard):
                     continue
-                # Woken up.
+                # Woken up — greet, then listen for the task.
                 if first_greeting:
                     first_greeting = False
-                    beep()
-                    speak("Yo, I'm Ras. What are we building today?", cfg)
+                    greeting = _greeting(True)
                 else:
-                    beep()
+                    greeting = _greeting(False)
+                beep()
+                speak(greeting, cfg)
                 rec2 = record_mic(utterance, utter)
                 if not rec2["ok"]:
                     continue
@@ -210,7 +234,7 @@ def run_voice(cfg):
                 history.append({"role": "user", "content": user_text})
                 reply = brain.run(history)
                 history.append({"role": "assistant", "content": reply})
-                print(f"Ras: {reply}")
+                print(f"Aira: {reply}")
                 speak(reply, cfg)
             except KeyboardInterrupt:
                 print("\nVoice mode stopped.")

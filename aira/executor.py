@@ -58,7 +58,7 @@ class ToolExecutor:
             self.pending[key] = {"tool": "run_shell", "args": args}
             if not self._approve(key, f"Run this command?\n```\n{command}\n```", force):
                 return {"ok": False, "error": "Denied by user."}
-        cwd = args.get("cwd") or HOME
+        cwd = os.path.expanduser(args.get("cwd") or HOME)
         timeout = int(args.get("timeout") or 120)
         env = dict(os.environ)
         env["PATH"] = f"/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:{env.get('PATH', '')}"
@@ -186,10 +186,10 @@ class ToolExecutor:
         if not text:
             return {"ok": False, "error": "no text"}
         path = tts.generate(text, voice=self.config.tts_voice())
-        self.session.post_file(path, title="Ras voice note")
+        self.session.post_file(path, title="Aira voice note")
         return {"ok": True, "path": str(path), "note": "audio posted to the conversation"}
 
     def notify(self, args):
         channel = args.get("channel") or self.config.digest_channel()
-        self.session.post_text(f"*[Ras → {channel}]*\n{args.get('text', '')}", channel_override=channel)
+        self.session.post_text(f"*[Aira → {channel}]*\n{args.get('text', '')}", channel_override=channel)
         return {"ok": True, "channel": channel}

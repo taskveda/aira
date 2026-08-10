@@ -4,7 +4,7 @@ import urllib.request
 
 from openai import OpenAI
 
-SYSTEM_PROMPT = """You are RAS — Rohit's personal AI employee, the voice assistant living on his Mac. You speak, you act, you don't waste words. Modeled on Vaibhav Sisinty's Jerry: you run his life — emails, calls, calendar, content, brand deals — and you bring him decisions, never homework.
+SYSTEM_PROMPT = """You are AIRA — Rohit's personal AI employee, the voice assistant living on his Mac. You speak, you act, you don't waste words. Modeled on Vaibhav Sisinty's Jerry: you run his life — emails, calls, calendar, content, brand deals — and you bring him decisions, never homework.
 
 WHO HE IS:
 Rohit, 21, founder/CEO of TaskVeda — AI skills + internships for Indian tier-2/3 students. 3,500+ students, WhatsApp community, daily LinkedIn and Instagram content, brand deals coming in. Your best friend AND boss.
@@ -24,7 +24,7 @@ THE JERRY ATTITUDE:
 
 HOW TO WORK:
 1. THINK → PLAN (2-6 tool calls) → ACT (read results before next call) → VERIFY (re-read files/shell) → DELIVER (what you did, where it's saved).
-2. Research: his files first (~/LinkedIn_Content, ~/Desktop/AI_Brain, ~/ras/data), then web (search → fetch top sources → extract). Never answer from memory when tools exist.
+2. Research: his files first (~/LinkedIn_Content, ~/Desktop/AI_Brain, ~/aira/data), then web (search → fetch top sources → extract). Never answer from memory when tools exist.
 3. Retry a failed search once, then report honestly.
 
 TOOLS: run_shell, list_dir, read_file, write_file, search_files, open_app, osascript, get_time, web_search, fetch_url, rss_read, research_to_csv, tts_speak, notify.
@@ -36,7 +36,7 @@ VOICE MODE (you are spoken, not typed):
 - Finish with one clear next action if there is one. No filler words, no "as an AI", no hedging.
 - Numbers and names: say them simply so they're easy to hear.
 - If he's angry or rushed: match him — short, done, next.
-- Greeting (first time each day): "Yo, I'm Ras. What are we building today?" After that, no greetings — straight to work."""
+- Greeting (first time each day): "Yo, I'm Aira. What are we building today?" After that, no greetings — straight to work."""
 
 TOOLS = [
     {
@@ -155,7 +155,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "research_to_csv",
-            "description": "Run several web searches and write the results to a CSV in ~/ras/data. Use for research tasks.",
+            "description": "Run several web searches and write the results to a CSV in ~/aira/data. Use for research tasks.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -192,7 +192,7 @@ TOOLS = [
     },
 ]
 
-JSON_FALLBACK = """You are Ras, a personal AI assistant with full laptop access.
+JSON_FALLBACK = """You are Aira, a personal AI assistant with full laptop access.
 Respond ONLY with valid JSON, either:
 {"tool": "name", "args": {...}}  to call a tool
 or {"reply": "text"}  to answer directly.
@@ -356,11 +356,13 @@ class Brain:
         greeting = "what are we building" in content.lower() or "co-pilot" in content.lower() or len(content) < 40
         if not (used_tools and greeting):
             return content
-        msgs.append({"role": "user", "content": "The task is done and the tool results are above. Write the final reply to the user now: 2-4 short sentences — what you did, the top findings, and the exact file path if one was created. Stay in Ras's voice."})
+        msgs.append({"role": "user", "content": "The task is done and the tool results are above. Write the final reply to the user now: 2-4 short sentences — what you did, the top findings, and the exact file path if one was created. Stay in Aira's voice."})
         return self.complete(msgs, temperature=0.3)
 
     def respond(self, messages):
-        """Multi-agent loop: Planner → Doer → Editor. All calls hit the same free DeepSeek brain."""
+        """Multi-agent orchestration: Swarm for tools, direct chat for talk."""
+        from .swarm import Swarm
+
         user_text = " ".join(m["content"] for m in messages if m["role"] == "user")
         plan = self.complete(
             [
@@ -371,14 +373,7 @@ class Brain:
         ).strip().upper()
         if plan.startswith("CHAT"):
             return _clean(self.complete([{"role": "system", "content": SYSTEM_PROMPT}] + messages, temperature=0.5))
-        doer = self.run(messages)
-        if not doer or len(doer) < 2 or (plan.startswith("TOOLS") and "error" in doer.lower()[:80]):
-            return doer
-        if len(doer) < 100:
-            return doer
-        draft = [{"role": "system", "content": "You are Ras — a sharp, warm friend and founder's right hand. The text below is a draft reply to your user. Improve it: keep your persona voice, stay under 150 words, keep ALL facts, numbers, file paths, URLs and tool results exactly. PRESERVE the sections labeled 'Where I got it:' and 'Next step:' — never remove or rename them. Do NOT add greetings like 'What are we building today?' to task answers. No exclamation spam, no fluff, no bullet spam."}, {"role": "user", "content": "Draft reply to improve:\\n\\n" + doer}]
-        final = _clean(self.complete(draft, temperature=0.3))
-        return final or doer
+        return Swarm(self, self.executor).run(messages)
 
 
 def _parse_json_tool(text):

@@ -16,3 +16,16 @@ data/
 
 # macOS
 .DS_Store
+
+# Local editor settings
+.qoder/
+
+# Built app bundles
+Aira.app/
+AiraPopup.app/
+
+# Local scratch/personal
+rohit_mail.txt
+
+# Generated images
+vibe_images/

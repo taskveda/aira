@@ -1,0 +1,1 @@
+Aira can help with tasks such as reading and writing files, running shell commands, and getting the current date and time.

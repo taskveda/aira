@@ -1,17 +1,17 @@
-# Ras
+# Aira
 
-A free, self-hosted clone of **"Jerry"** — the AI personal assistant Vaibhav Sisinty (GrowthSchool/Outskill) demos in his classes — renamed **Ras**.
+A free, self-hosted clone of **"Jerry"** — the AI personal assistant Vaibhav Sisinty (GrowthSchool/Outskill) demos in his classes — renamed **Aira**.
 
-Ras lives on your Mac, listens on **Slack**, thinks with **DeepSeek** (or a 100% free local model), and can run anything you ask: shell commands, files, apps, web research, email digests, scheduled jobs, and spoken voice notes.
+Aira lives on your Mac, listens on **Slack**, thinks with **DeepSeek** (or a 100% free local model), and can run anything you ask: shell commands, files, apps, web research, email digests, scheduled jobs, and spoken voice notes.
 
 ## Capabilities
 
-| Job (as in Vaibhav's Jerry) | Ras equivalent |
+| Job (as in Vaibhav's Jerry) | Aira equivalent |
 |---|---|
 | Slack assistant (calendar, email, files) | Slack DM / thread frontend |
 | Email gatekeeper | Gmail IMAP scan → DeepSeek triage → digest with "Got it ✅" + Discord escalation |
 | Exec assistant on your laptop | Shell + file + AppleScript + browser (open) tools |
-| Content research → Sheets | `research_to_csv` → CSV in `~/ras/data` |
+| Content research → Sheets | `research_to_csv` → CSV in `~/aira/data` |
 | Scheduled workflows | cron jobs in `config.yaml` |
 | Voice | Free TTS (edge-tts) audio clips posted to Slack |
 | Lead calls (Vapi/Twilio, costs money) | Not included — DM outreach drafts instead |
@@ -26,16 +26,16 @@ Ras lives on your Mac, listens on **Slack**, thinks with **DeepSeek** (or a 100%
 ## Setup
 
 ```bash
-cd ~/ras
+cd ~/aira
 ./setup.sh                        # creates venv + installs deps
 ```
 
 ### 1. Slack app (frontend)
-1. Go to https://api.slack.com/apps → **Create New App** → *From scratch* → name `Ras`, pick your workspace
+1. Go to https://api.slack.com/apps → **Create New App** → *From scratch* → name `Aira`, pick your workspace
 2. Left menu **Socket Mode** → **Enable** (generates an app-level token, `xapp-...`)
 3. Left menu **OAuth & Permissions** → **Add Bot Token Scopes**: `chat:write`, `app_mentions:read`, `im:history`, `files:write`, `channels:history`
 4. **Install to Workspace** → copy the **Bot User OAuth Token** (`xoxb-...`)
-5. Go to your Slack workspace, DM the Ras app to open a thread
+5. Go to your Slack workspace, DM the Aira app to open a thread
 
 ```bash
 export RAS_SLACK_APP_TOKEN=xapp-...
@@ -56,7 +56,7 @@ brew install ollama
 ollama pull qwen3:8b
 # config.yaml -> provider: ollama
 ```
-Note: pick a tool-calling model (`qwen3`, `llama3.1+`). `deepseek-r1` distill models are chat-only; Ras falls back to JSON mode with them.
+Note: pick a tool-calling model (`qwen3`, `llama3.1+`). `deepseek-r1` distill models are chat-only; Aira falls back to JSON mode with them.
 
 ### 3. Email digest (optional)
 1. Enable 2FA on your Google account → https://myaccount.google.com/apppasswords → generate one
@@ -70,19 +70,19 @@ Create a Discord server → Server Settings → Integrations → **Webhooks** �
 
 ```bash
 # 0. NO-ACCOUNT web frontend (works immediately — recommended to start):
-./venv/bin/python -m ras.main --web
+./venv/bin/python -m aira.main --web
 #   opens http://localhost:8756 in your browser — chat, approvals, history
 
 # 1. Test the brain without Slack (recommended first):
-./venv/bin/python -m ras.main --cli
+./venv/bin/python -m aira.main --cli
 
 # 2. Live on Slack (needs the Slack app from the setup steps above):
-./venv/bin/python -m ras.main
+./venv/bin/python -m aira.main
 ```
 
-One-shot mode for scripts: `./venv/bin/python -m ras.main --once "summarize my downloads folder"`
+One-shot mode for scripts: `./venv/bin/python -m aira.main --once "summarize my downloads folder"`
 
-## Example commands (DM Ras in Slack)
+## Example commands (DM Aira in Slack)
 
 - "find the largest file in ~/Downloads"
 - "check my inbox and tell me what's urgent" (only if email enabled — otherwise it tells you it can't)
@@ -102,11 +102,11 @@ One-shot mode for scripts: `./venv/bin/python -m ras.main --once "summarize my d
 ## Files
 
 ```
-~/ras/
+~/aira/
 ├── config.yaml          # all settings
 ├── requirements.txt
 ├── setup.sh
-├── ras/
+├── aira/
 │   ├── main.py          # entry point
 │   ├── brain.py         # DeepSeek/Ollama tool-calling loop
 │   ├── executor.py      # shell/files/apps/web/sheets/tts tools
@@ -120,19 +120,19 @@ One-shot mode for scripts: `./venv/bin/python -m ras.main --once "summarize my d
 │   └── cli.py           # terminal mode (no Slack)
 └── data/                # CSVs, history, audio
 
-## Voice mode ("Hey Ras")
+## Voice mode ("Hey Aira")
 
-Hands-free, spoken Ras. Zero extra installs — it uses ffmpeg (mic) +
+Hands-free, spoken Aira. Zero extra installs — it uses ffmpeg (mic) +
 Cloudflare Workers AI Whisper (speech-to-text, same account/key as the
 brain) + edge-tts (speech out).
 
 ```bash
-./venv/bin/python -m ras.main --voice
+./venv/bin/python -m aira.main --voice
 ```
 
-- Say **"Hey Ras"** to wake it, then say your task. It answers out loud.
+- Say **"Hey Aira"** to wake it, then say your task. It answers out loud.
 - One greeting per day; after that, straight to work.
-- Destructive commands (rm, sudo, kill, overwrites) pause and Ras asks
+- Destructive commands (rm, sudo, kill, overwrites) pause and Aira asks
   you out loud — answer "yes" or "no".
 - First run: macOS will ask for **microphone access** for your terminal.
   If it fails, check System Settings → Privacy & Security → Microphone.
@@ -141,4 +141,22 @@ brain) + edge-tts (speech out).
 
 Tune it in `config.yaml` → `voice:` (poll_seconds, utterance_seconds,
 wake_words, stt_model).
+
+## Siri-style popup
+
+A native macOS overlay, like Siri: press **Option+Space** (or the menu-bar
+icon) and a floating glass panel appears — tap the mic and talk, or just
+type. Aira runs the same agentic brain (tools, research, files, shell) and
+answers in chat bubbles, speaking the reply aloud.
+
+```bash
+./build_popup.sh                              # one-time build (Xcode CLT: swiftc)
+./venv/bin/python -m aira.main --popup         # starts the API server + opens the popup
+```
+
+- Destructive commands show **Approve / Deny** buttons right in the popup.
+- Speech-to-text uses the same free Cloudflare Whisper; voice-out is
+  edge-tts played via afplay.
+- Mic permission: the app is already signed ad-hoc; grant access when
+  macOS asks, or via System Settings → Privacy & Security → Microphone.
 ```

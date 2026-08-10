@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-ROOT = Path(os.path.expanduser("~/ras"))
+ROOT = Path(os.path.expanduser("~/aira"))
 DATA = ROOT / "data"
 HISTORY_DIR = DATA / "history"
 AUDIO_DIR = DATA / "audio"
@@ -17,16 +17,16 @@ DEFAULTS = {
     },
     "ollama": {"model": "qwen3:8b", "base_url": "http://localhost:11434/v1"},
     "slack": {
-        "bot_token_env": "RAS_SLACK_BOT_TOKEN",
-        "app_token_env": "RAS_SLACK_APP_TOKEN",
+        "bot_token_env": "AIRA_SLACK_BOT_TOKEN",
+        "app_token_env": "AIRA_SLACK_APP_TOKEN",
         "digest_channel": "#general",
     },
-    "discord": {"webhook_env": "RAS_DISCORD_WEBHOOK"},
+    "discord": {"webhook_env": "AIRA_DISCORD_WEBHOOK"},
     "email": {
         "enabled": False,
         "imap_host": "imap.gmail.com",
-        "user_env": "RAS_EMAIL_USER",
-        "pass_env": "RAS_EMAIL_PASS",
+        "user_env": "AIRA_EMAIL_USER",
+        "pass_env": "AIRA_EMAIL_PASS",
         "poll_minutes": 5,
         "escalate_minutes": 30,
     },
@@ -35,7 +35,7 @@ DEFAULTS = {
         "poll_seconds": 2.5,
         "utterance_seconds": 10,
         "stt_model": "@cf/openai/whisper-large-v3-turbo",
-        "wake_words": ["hey ras", "hey rass", "ras"],
+        "wake_words": ["hey aira", "aira"],
     },
     "safety": {"auto": False},
     "jobs": [],
@@ -44,7 +44,7 @@ DEFAULTS = {
 
 
 def _load_env(path=None):
-    """Load ~/ras/.env into os.environ — never overriding real env vars."""
+    """Load ~/aira/.env into os.environ — never overriding real env vars."""
     path = Path(path or ROOT / ".env")
     if not path.exists():
         return

@@ -1,11 +1,15 @@
 import json
 import re
+import tempfile
 import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from . import tts
+from . import voice
 from .brain import Brain
+from .config import AUDIO_DIR
 from .executor import ToolExecutor
 
 HOST, PORT = "127.0.0.1", 8756
@@ -13,7 +17,7 @@ HOST, PORT = "127.0.0.1", 8756
 PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ras — Your AI</title>
+<title>Aira — Your AI</title>
 <style>
 :root{
  --bg:#0a0c12; --bg2:#0e1119; --panel:rgba(20,24,34,.72); --panel2:#161b28;
@@ -119,12 +123,12 @@ main{flex:1;display:flex;flex-direction:column;min-width:0}
  font-size:13.5px;line-height:1.55;box-shadow:0 3px 14px rgba(0,0,0,.28)}
 .row.user .bubble{background:linear-gradient(135deg,#3d5bf0,#5b46e0);color:#fff;
  border-bottom-right-radius:5px}
-.row.ras .bubble{background:var(--panel2);border:1px solid var(--border);border-bottom-left-radius:5px}
+.row.aira .bubble{background:var(--panel2);border:1px solid var(--border);border-bottom-left-radius:5px}
 .row.sys .bubble{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.25);color:#fcd34d;
  font-size:12px;max-width:92%}
 .avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;margin-top:2px;display:flex;
  align-items:center;justify-content:center;font-size:12px;font-weight:700}
-.row.ras .avatar{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;margin-right:10px}
+.row.aira .avatar{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;margin-right:10px}
 .row.user .avatar{background:#2a3350;color:var(--muted);margin-left:10px;font-size:10.5px}
 .typing{display:inline-flex;gap:5px;padding:6px 4px}
 .typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1.1s infinite}
@@ -166,7 +170,7 @@ textarea::placeholder{color:var(--faint)}
 <aside>
   <div class="sb-head">
     <div class="logo">R</div>
-    <div class="brand"><h1>Ras</h1><p>Your AI, on your Mac</p>
+    <div class="brand"><h1>Aira</h1><p>Your AI, on your Mac</p>
       <span class="pill"><i></i>Online · DeepSeek</span>
     </div>
   </div>
@@ -191,11 +195,11 @@ textarea::placeholder{color:var(--faint)}
     </div>
   </div>
   <div id="tab-f-wrap" style="display:none">
-    <div class="sb-label">~/ras/data · output files</div>
+    <div class="sb-label">~/aira/data · output files</div>
     <div id="filelist"></div>
   </div>
   <div id="tab-a-wrap" style="display:none">
-    <div class="card"><b>Ras — your friend &amp; growth co-pilot</b>
+    <div class="card"><b>Aira — your friend &amp; growth co-pilot</b>
       <p>First a friend, then a founder's right hand. Lives on your Mac, thinks on DeepSeek, free.</p></div>
     <div class="card"><b>What I can do</b>
       <span class="tag">Open apps</span><span class="tag">Run shell</span><span class="tag">Read/write files</span>
@@ -213,7 +217,7 @@ textarea::placeholder{color:var(--faint)}
     <div class="tb-l">
       <div class="tb-av">R</div>
       <div><div class="tb-name">Rohit</div>
-        <div class="tb-sub"><i></i>Ras is listening</div></div>
+        <div class="tb-sub"><i></i>Aira is listening</div></div>
     </div>
     <div class="tb-r">
       <button id="voice" title="Speak replies"><span class="vdot"></span>Voice</button>
@@ -223,11 +227,11 @@ textarea::placeholder{color:var(--faint)}
   <div id="log"></div>
   <div class="composer">
     <div class="cwrap">
-      <textarea id="in" rows="1" placeholder="Message Ras… or press 🎙 and talk" autofocus></textarea>
-      <button class="iconbtn" id="mic" title="Speak to Ras">🎙</button>
+      <textarea id="in" rows="1" placeholder="Message Aira… or press 🎙 and talk" autofocus></textarea>
+      <button class="iconbtn" id="mic" title="Speak to Aira">🎙</button>
       <button id="send" title="Send">➤</button>
     </div>
-    <div class="hint">"Hey Ras" · "open WhatsApp" · "research AI agents → CSV" · "rewrite this for LinkedIn"</div>
+    <div class="hint">"Hey Aira" · "open WhatsApp" · "research AI agents → CSV" · "rewrite this for LinkedIn"</div>
   </div>
 </main>
 <script>
@@ -235,20 +239,20 @@ const log=document.getElementById('log'),inp=document.getElementById('in');
 const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function bubble(text,cls){const row=document.createElement('div');row.className='row '+cls;
  let b='';
- if(cls==='ras')b+='<div class="avatar">R</div>';
+ if(cls==='aira')b+='<div class="avatar">R</div>';
  else if(cls==='user')b+='<div class="avatar">YOU</div>';
  row.innerHTML=b+'<div class="bubble"></div>';
  row.querySelector('.bubble').textContent=text;
  log.appendChild(row);log.scrollTop=log.scrollHeight;return row.querySelector('.bubble')}
 function typing(row){row.querySelector('.bubble').innerHTML='<div class="typing"><i></i><i></i><i></i></div>'}
 async function load(){const r=await fetch('/api/history');const h=await r.json();
- log.innerHTML='';h.forEach(m=>{if(m.role!=='system')bubble(m.content,m.role==='user'?'user':'ras')});checkPending()}
+ log.innerHTML='';h.forEach(m=>{if(m.role!=='system')bubble(m.content,m.role==='user'?'user':'aira')});checkPending()}
 async function send(){const t=inp.value.trim();if(!t)return;inp.value='';inp.style.height='auto';
- bubble(t,'user');const row=document.createElement('div');row.className='row ras';
+ bubble(t,'user');const row=document.createElement('div');row.className='row aira';
  row.innerHTML='<div class="avatar">R</div><div class="bubble"></div>';log.appendChild(row);typing(row);
  try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});
  const j=await r.json();row.querySelector('.bubble').textContent=j.reply||'error'}
- catch(e){row.querySelector('.bubble').textContent='Ras is offline'}
+ catch(e){row.querySelector('.bubble').textContent='Aira is offline'}
  log.scrollTop=log.scrollHeight;checkPending()}
 async function checkPending(){try{const r=await fetch('/api/pending');const j=await r.json();
  const old=document.querySelector('.approve');if(old)old.remove();
@@ -312,7 +316,7 @@ if(SR){
   try{rec.start();mic.classList.add('on');listening=true}
   catch(e){alert('Microphone blocked — allow mic access in the browser and try again')}};
 }else mic.style.display='none';
-setInterval(()=>{const bb=document.querySelector('.row.ras .bubble');
+setInterval(()=>{const bb=document.querySelector('.row.aira .bubble');
  if(voiceOn&&bb&&!bb.dataset.said){bb.dataset.said='1';speak(bb.textContent)}},1200);
 load();setInterval(checkPending,1500);
 </script></body></html>"""
@@ -327,7 +331,7 @@ class WebSession:
     def post_text(self, text, channel_override=None):
         self.messages.append({"role": "system", "content": text})
 
-    def post_file(self, path, title="Ras output"):
+    def post_file(self, path, title="Aira output"):
         self.messages.append({"role": "system", "content": f"[file] {title}: {path}"})
 
     def ask_approval(self, question, force_auto=False):
@@ -351,6 +355,7 @@ class WebSession:
 class Handler(BaseHTTPRequestHandler):
     session = WebSession()
     brain = None
+    config = None
 
     def log_message(self, *args):
         pass
@@ -378,44 +383,87 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/pending":
             return self._json({"question": Handler.session.pending_question})
         if self.path == "/api/files":
-            data_dir = Path.home() / "ras" / "data"
+            data_dir = Path.home() / "aira" / "data"
             files = []
             if data_dir.exists():
                 for p in sorted(data_dir.iterdir(), key=lambda p: -p.stat().st_mtime if p.is_file() else 0):
                     if p.is_file():
                         files.append({"name": p.name, "size": p.stat().st_size, "modified": p.stat().st_mtime})
             return self._json({"files": files[:60]})
+        if self.path.startswith("/api/audio/"):
+            name = urllib.parse.unquote(self.path.rsplit("/", 1)[-1])
+            audio = (AUDIO_DIR / name).resolve()
+            if not audio.is_file() or audio.parent != AUDIO_DIR.resolve():
+                return self._json({"error": "not found"}, 404)
+            body = audio.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/mpeg")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         self._json({"error": "not found"}, 404)
 
     def do_POST(self):
+        ctype = self.headers.get("Content-Type", "").lower()
+        if self.path == "/api/stt" and "audio/wav" in ctype:
+            return self._stt()
         length = int(self.headers.get("Content-Length", 0))
         payload = json.loads(self.rfile.read(length) or b"{}")
         if self.path == "/api/chat":
             message = payload.get("message", "")
             Handler.session.messages.append({"role": "user", "content": message})
             low = re.sub(r"[^a-z\s]", "", message.lower()).strip()
-            if re.fullmatch(r"(hey\s+)?ras", low):
-                reply = "Hi Rohit — Ras here. What are we building today?"
+            if re.fullmatch(r"(hey\s+)?aira", low):
+                reply = "Hi Rohit — Aira here. What are we building today?"
                 Handler.session.messages.append({"role": "assistant", "content": reply})
                 return self._json({"reply": reply})
             try:
                 reply = Handler.brain.respond([{"role": "user", "content": message}] + [{"role": "user", "content": m["content"]} for m in Handler.session.messages if m["role"] == "user"][:-1])
             except Exception as exc:
-                reply = f"Ras hit an error: {type(exc).__name__}: {exc}"
+                reply = f"Aira hit an error: {type(exc).__name__}: {exc}"
             Handler.session.messages.append({"role": "assistant", "content": reply})
             return self._json({"reply": reply})
         if self.path == "/api/pending":
             Handler.session.resolve(bool(payload.get("approve")))
             return self._json({"ok": True})
+        if self.path == "/api/tts":
+            text = (payload.get("text") or "").strip()
+            if not text:
+                return self._json({"error": "no text"}, 400)
+            try:
+                audio = tts.generate(text, voice=Handler.config.tts_voice())
+            except Exception as exc:
+                return self._json({"error": f"{type(exc).__name__}: {exc}"}, 500)
+            return self._json({"url": f"/api/audio/{audio.name}"})
         self._json({"error": "not found"}, 404)
 
+    def _stt(self):
+        length = int(self.headers.get("Content-Length", 0))
+        wav_bytes = self.rfile.read(length)
+        if len(wav_bytes) < 100:
+            return self._json({"error": "clip too short"}, 400)
+        tmp = Path(tempfile.mktemp(suffix=".wav"))
+        try:
+            tmp.write_bytes(wav_bytes)
+            result = voice.transcribe(tmp, Handler.config)
+        except Exception as exc:
+            return self._json({"error": f"{type(exc).__name__}: {exc}"}, 500)
+        finally:
+            tmp.unlink(missing_ok=True)
+        if not result.get("ok"):
+            return self._json({"error": result.get("error", "stt failed")}, 500)
+        return self._json({"text": result.get("text", "")})
 
-def start_web(config):
+
+def start_web(config, open_browser=True):
     session = Handler.session
     executor = ToolExecutor(session, config)
     Handler.brain = Brain(config, executor)
+    Handler.config = config
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    import webbrowser
-    threading.Timer(0.6, webbrowser.open, args=(f"http://{HOST}:{PORT}/",)).start()
-    print(f"Ras web UI running at http://{HOST}:{PORT} — open in your browser (already opened)")
+    if open_browser:
+        import webbrowser
+        threading.Timer(0.6, webbrowser.open, args=(f"http://{HOST}:{PORT}/",)).start()
+    print(f"Aira web UI running at http://{HOST}:{PORT}")
     server.serve_forever()

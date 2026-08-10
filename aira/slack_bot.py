@@ -21,7 +21,7 @@ class SlackSession:
     def post_text(self, text, channel_override=None):
         notifier.post_text(self.client, channel_override or self.channel, text, thread_ts=self.thread_ts)
 
-    def post_file(self, path, title="Ras output"):
+    def post_file(self, path, title="Aira output"):
         notifier.post_file(self.client, self.channel, path, thread_ts=self.thread_ts, title=title)
 
     def ask_approval(self, question, force_auto=False):
@@ -30,7 +30,7 @@ class SlackSession:
         aid, blocks = notifier.approve_blocks(question)
         event = threading.Event()
         self.resolvers[aid] = event
-        notifier.post_blocks(self.client, self.channel, blocks, text="Ras needs approval", thread_ts=self.thread_ts)
+        notifier.post_blocks(self.client, self.channel, blocks, text="Aira needs approval", thread_ts=self.thread_ts)
         answered = event.wait(timeout=600)
         self.resolvers.pop(aid, None)
         return answered and getattr(event, "approved", False)
@@ -94,17 +94,17 @@ def create_bot(config, brain_factory=None):
             brain = brain_factory(executor) if brain_factory else Brain(config, executor)
             history = load_history(channel, thread_ts)
             history.append({"role": "user", "content": text})
-            reply = brain.run(history)
+            reply = brain.respond(history)
             history.append({"role": "assistant", "content": reply})
             save_history(channel, thread_ts, history)
             session.post_text(reply)
         except Exception as exc:
             try:
-                notifier.post_text(client, channel, f"Ras hit an error: {type(exc).__name__}: {exc}", thread_ts=thread_ts)
+                notifier.post_text(client, channel, f"Aira hit an error: {type(exc).__name__}: {exc}", thread_ts=thread_ts)
             except Exception:
                 pass
 
-    @app.action("ras_approve")
+    @app.action("aira_approve")
     def on_approve(ack, body, client):
         ack()
         action_id = body["actions"][0]["value"]
@@ -112,7 +112,7 @@ def create_bot(config, brain_factory=None):
         if session:
             session.resolve(action_id, True)
 
-    @app.action("ras_deny")
+    @app.action("aira_deny")
     def on_deny(ack, body, client):
         ack()
         action_id = body["actions"][0]["value"]
@@ -120,11 +120,11 @@ def create_bot(config, brain_factory=None):
         if session:
             session.resolve(action_id, False)
 
-    @app.action("ras_ack")
+    @app.action("aira_ack")
     def on_ack(ack, body, client):
         ack()
         digest_id = body["actions"][0]["value"]
-        holder = getattr(app, "_ras_ack_handler", None)
+        holder = getattr(app, "_aira_ack_handler", None)
         if holder:
             holder(digest_id)
 
@@ -141,7 +141,7 @@ def create_bot(config, brain_factory=None):
             sessions[key] = make_session(client, channel, thread_ts)
         return sessions[key]
 
-    app._ras_ack_handler = None
+    app._aira_ack_handler = None
     return app, executor_holder
 
 

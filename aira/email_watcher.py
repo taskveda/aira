@@ -12,7 +12,7 @@ from . import notifier
 from .brain import Brain
 from .config import DATA
 
-TRIAGE_PROMPT = """You are Ras, an email assistant. Analyze the JSON list of emails below and reply with ONLY a JSON array.
+TRIAGE_PROMPT = """You are Aira, an email assistant. Analyze the JSON list of emails below and reply with ONLY a JSON array.
 For each email output: {"id": n, "from": "...", "subject": "...", "urgent": 0-5, "category": "personal|work|newsletter|promo|other", "summary": "one sentence", "suggested_reply": "one sentence draft or empty string if no reply needed"}.
 Sort by urgent descending. Never invent emails that are not in the input."""
 
@@ -113,7 +113,7 @@ class EmailWatcher:
         if not items:
             items = [{"id": e["id"], "from": e["from"], "subject": e["subject"], "urgent": 1, "category": "other", "summary": e["snippet"][:200], "suggested_reply": ""} for e in emails[:10]]
         digest_id = uuid.uuid4().hex[:12]
-        lines = [f"*Ras digest — {len(items)} new email(s)*"]
+        lines = [f"*Aira digest — {len(items)} new email(s)*"]
         for item in items[:12]:
             flags = "🔥" if int(item.get("urgent", 0)) >= 4 else "·"
             lines.append(f"{flags} *{item.get('subject', '')[:120]}*\n    from {item.get('from', '')[:80]} — {item.get('summary', '')[:220]}")
@@ -156,7 +156,7 @@ class EmailWatcher:
             try:
                 self.triage_and_post()
             except Exception as exc:
-                print(f"[ras] email scan error: {exc}")
+                print(f"[aira] email scan error: {exc}")
             for _ in range(poll_min * 60):
                 time.sleep(1)
                 if not self._running:
