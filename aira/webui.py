@@ -356,6 +356,12 @@ class Handler(BaseHTTPRequestHandler):
     session = WebSession()
     brain = None
     config = None
+    summon_pending = False
+
+    @classmethod
+    def summon(cls):
+        """Ask the popup to show itself (used when 'Hey Aira' wakes Aira)."""
+        cls.summon_pending = True
 
     def log_message(self, *args):
         pass
@@ -380,6 +386,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/history":
             public = [{"role": m["role"], "content": m["content"]} for m in Handler.session.messages if m["role"] != "system"]
             return self._json({"history": public})
+        if self.path == "/api/summon":
+            pending = Handler.summon_pending
+            Handler.summon_pending = False
+            return self._json({"summon": pending})
         if self.path == "/api/pending":
             return self._json({"question": Handler.session.pending_question})
         if self.path == "/api/files":
@@ -456,12 +466,19 @@ class Handler(BaseHTTPRequestHandler):
         return self._json({"text": result.get("text", "")})
 
 
-def start_web(config, open_browser=True):
+def make_server(config):
+    """Build (but don't run) the server, wiring the shared session + brain so
+    both the popup/web UI and the background 'Hey Aira' listener use the same
+    conversation, approval flow, and agentic engine."""
     session = Handler.session
     executor = ToolExecutor(session, config)
     Handler.brain = Brain(config, executor)
     Handler.config = config
-    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    return ThreadingHTTPServer((HOST, PORT), Handler)
+
+
+def start_web(config, open_browser=True):
+    server = make_server(config)
     if open_browser:
         import webbrowser
         threading.Timer(0.6, webbrowser.open, args=(f"http://{HOST}:{PORT}/",)).start()

@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         installHotKey()
         centerTop()
         startApprovalPolling()
+        startSummonPolling()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -407,10 +408,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
     // MARK: - Approvals
 
+    var summonTimer: Timer?
+
     func startApprovalPolling() {
         approvalTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.pollApprovals()
         }
+    }
+
+    func startSummonPolling() {
+        summonTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.pollSummon()
+        }
+    }
+
+    func pollSummon() {
+        URLSession.shared.dataTask(with: URL(string: "\(API_BASE)/api/summon")!) { [weak self] data, _, _ in
+            guard let self = self, let data = data else { return }
+            let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            DispatchQueue.main.async {
+                if json?["summon"] as? Bool == true {
+                    self.showPopup()
+                }
+            }
+        }.resume()
     }
 
     func pollApprovals() {

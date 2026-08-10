@@ -240,6 +240,16 @@ class OllamaClient:
         return content, calls
 
 
+def _persona():
+    """Optional memory strap (who Rohit is, how he writes, what's live) so Aira
+    feels like the same assistant in every mode — text, voice, popup, Slack."""
+    try:
+        from .memory import strap
+        return strap()
+    except Exception:
+        return ""
+
+
 class Brain:
     def __init__(self, config, executor):
         self.config = config
@@ -264,7 +274,9 @@ class Brain:
         return _clean(resp.choices[0].message.content or "")
 
     def run(self, messages, max_iters=10):
-        msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
+        persona = _persona()
+        system = SYSTEM_PROMPT + (f"\n\n--- ROHIT'S LIVE CONTEXT (read only, local) ---\n{persona}" if persona else "")
+        msgs = [{"role": "system", "content": system}] + messages
         last_call = None
         repeat = 0
         for _ in range(max_iters):
@@ -372,7 +384,9 @@ class Brain:
             temperature=0.0,
         ).strip().upper()
         if plan.startswith("CHAT"):
-            return _clean(self.complete([{"role": "system", "content": SYSTEM_PROMPT}] + messages, temperature=0.5))
+            persona = _persona()
+            system = SYSTEM_PROMPT + (f"\n\n--- ROHIT'S LIVE CONTEXT (read only, local) ---\n{persona}" if persona else "")
+            return _clean(self.complete([{"role": "system", "content": system}] + messages, temperature=0.5))
         return Swarm(self, self.executor).run(messages)
 
 
