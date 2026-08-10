@@ -3,6 +3,7 @@ import AVFoundation
 import Carbon
 import CoreGraphics
 import CoreFoundation
+import ApplicationServices
 
 let API_BASE = "http://127.0.0.1:8756"
 
@@ -34,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     var controlTap: CFMachPort?
     private var controlDownAt: TimeInterval = 0
     private var controlUpAt: TimeInterval = 0
+    private var controlTapRetry: Timer?
 
     // MARK: - Lifecycle
 
@@ -550,6 +552,27 @@ private let controlTapCallback: @convention(c) (CGEventTapProxy, CGEventType, CG
 
 extension AppDelegate {
     func installControlTap() {
+        if !AXIsProcessTrusted() {
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            _ = AXIsProcessTrustedWithOptions(options)
+        }
+        startControlTapRetry()
+    }
+
+    func startControlTapRetry() {
+        controlTapRetry?.invalidate()
+        controlTapRetry = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            if self.controlTap == nil {
+                self.tryCreateControlTap()
+            } else {
+                self.controlTapRetry?.invalidate()
+            }
+        }
+        tryCreateControlTap()
+    }
+
+    func tryCreateControlTap() {
         let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue)
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -559,8 +582,9 @@ extension AppDelegate {
             callback: controlTapCallback,
             userInfo: nil
         ) else {
-            statusLabel.stringValue = "Aira needs Accessibility access — System Settings → Privacy & Security → Accessibility"
-            NSLog("Aira: Control double-tap disabled — Accessibility permission not granted.")
+            if !AXIsProcessTrusted() {
+                statusLabel.stringValue = "Aira needs Accessibility access — System Settings → Privacy & Security → Accessibility"
+            }
             return
         }
         controlTap = tap
@@ -571,6 +595,8 @@ extension AppDelegate {
         }
         thread.name = "AiraControlTap"
         thread.start()
+        statusLabel.stringValue = "Double-tap Control to summon · mic or type"
+        controlTapRetry?.invalidate()
     }
 
     func handleControlTap(isDown: Bool) {
