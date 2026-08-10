@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aira — Personal AI</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --purple:#6446f5;--purple2:#7657ff;--ink:#17171b;--muted:#777783;
+  --line:#e9e9ee;--panel:#fff;--bg:#fafafd;--soft:#f3f0ff;
+}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit}
+button{cursor:pointer}
+.app{min-height:100vh;display:flex}
+.sidebar{
+  position:fixed;left:0;top:0;bottom:0;width:246px;background:rgba(255,255,255,.96);
+  border-right:1px solid #e7e7eb;padding:28px 16px 18px;z-index:5
+}
+.window-dots{display:flex;gap:10px;margin:0 0 28px 12px}
+.window-dots i{width:14px;height:14px;border-radius:50%;display:block}
+.red{background:#ff5f57}.yellow{background:#febc2e}.green{background:#28c840}
+.brand{display:flex;align-items:center;gap:12px;margin:0 14px 34px}
+.brand-logo{width:42px;height:42px;border-radius:50%;background:#0f1015;color:white;display:grid;place-items:center;font-size:22px;font-weight:700;box-shadow:inset 0 0 0 1px #292a30}
+.brand-name{font-size:23px;font-weight:700;letter-spacing:-.6px}.brand-sub{font-size:12px;color:#8a8a94;margin-top:2px}
+.nav{display:grid;gap:4px}
+.nav button{
+  height:43px;width:100%;border:0;background:transparent;border-radius:10px;text-align:left;
+  display:flex;align-items:center;gap:14px;padding:0 16px;color:#555560;font-size:14px
+}
+.nav button:hover{background:#f7f6fa}.nav button.active{background:#f0edff;color:#6042ed}
+.nav-icon{width:18px;text-align:center;font-size:18px;line-height:1}
+.sep{height:1px;background:#e9e9ed;margin:20px 10px}
+.memory{display:flex;align-items:center;justify-content:space-between;width:100%}
+.new{font-size:9px;background:#f0ebff;color:#6546ef;border-radius:9px;padding:3px 7px}
+.profile{
+  position:absolute;left:16px;right:16px;bottom:18px;height:64px;border:1px solid #e6e6eb;
+  border-radius:15px;background:white;display:flex;align-items:center;padding:10px;gap:10px
+}
+.avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#4e4e54,#b9b9bd);color:white;font-size:13px;font-weight:700}
+.profile-name{font-size:12px;font-weight:600}.profile-plan{font-size:11px;color:#85858d;margin-top:3px}.chev{margin-left:auto;color:#777}
+.main{margin-left:246px;width:calc(100% - 246px);padding:18px 32px 36px}
+.topbar{height:50px;display:flex;align-items:center;justify-content:flex-end;gap:18px}
+.search{width:271px;height:40px;border:1px solid #e6e6eb;border-radius:11px;background:white;display:flex;align-items:center;gap:9px;padding:0 12px;color:#777}
+.search input{border:0;outline:0;width:100%;font-size:13px;color:#333}.search input::placeholder{color:#8b8b94}
+.shortcut{font-size:10px;background:#f5f5f7;padding:4px 6px;border-radius:5px;color:#707079}
+.top-icon{border:0;background:transparent;width:30px;height:30px;color:#333;font-size:21px}
+.user-orb{width:34px;height:34px;border-radius:50%;background:#0f1015;color:#7d5cff;display:grid;place-items:center;font-weight:700;font-size:18px}
+.content{max-width:1250px;margin:17px auto 0}
+.greeting{margin:0 0 20px 10px}.greeting h1{font-size:29px;letter-spacing:-1.1px;margin:0 0 5px;font-weight:700}.greeting p{margin:0;color:#777783;font-size:14px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px}
+.card{background:#fff;border:1px solid #e8e8ed;border-radius:18px;box-shadow:0 7px 28px rgba(30,25,60,.035)}
+.hero{
+  height:255px;padding:27px 26px;background:
+  radial-gradient(circle at 80% 15%,rgba(225,218,255,.7),transparent 32%),
+  linear-gradient(110deg,#fff 30%,#faf8ff 65%,#f0edff 100%);
+  border-color:#e7e2fb
+}
+.ready{display:flex;align-items:center;gap:9px;color:#31313a;font-size:12px;margin-bottom:16px}.ready-dot{width:7px;height:7px;background:#7052f6;border-radius:50%;box-shadow:0 0 0 5px #eeeaff}
+.hero h2{font-size:25px;letter-spacing:-.7px;margin:0 0 24px}
+.prompt{height:62px;border:1px solid #e6e3ec;background:#fff;border-radius:16px;display:flex;align-items:center;padding:0 12px 0 20px;box-shadow:0 8px 22px rgba(75,57,135,.055)}
+.prompt input{border:0;outline:0;flex:1;font-size:14px;color:#333}.prompt input::placeholder{color:#aaaab2}
+.attach,.mic{border:0;background:transparent;color:#70707a;font-size:19px;width:38px;height:38px;border-radius:9px}.attach:hover,.mic:hover{background:#f4f3f7}
+.send{width:40px;height:40px;border:0;border-radius:50%;color:#fff;background:linear-gradient(145deg,#6948f6,#7857ff);font-size:20px;box-shadow:0 7px 18px rgba(102,70,245,.25)}
+.quick{display:flex;gap:9px;margin-top:15px;flex-wrap:wrap}.quick button{height:33px;border:1px solid #e7e4ed;background:white;border-radius:999px;padding:0 13px;font-size:11px;color:#5e5b67}.quick button:hover{border-color:#cfc4ff;color:#6142eb}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}.stat{height:104px;padding:18px 17px}.stat small{color:#7c7c86;font-size:11px}.stat strong{font-size:24px;display:block;margin:7px 0 3px;letter-spacing:-.5px}.stat span{font-size:10px;color:#7e7e87}.up{color:#36a66e!important}
+.section{padding:18px;margin-top:16px}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.section-head h3{font-size:14px;margin:0}.view{border:0;background:transparent;color:#6142ee;font-size:11px}
+.tasks{display:grid;gap:7px}.task{height:52px;border:1px solid #ececf0;border-radius:11px;padding:0 12px;display:flex;align-items:center;gap:12px}.num{width:20px;text-align:center;font-size:11px;color:#777}.task-title{font-size:12px;flex:1}.task small{font-size:10px;color:#7c7c86}.pill{font-size:10px;padding:4px 9px;border-radius:999px}.high{background:#fff0f1;color:#e16069}.medium{background:#fff5e7;color:#dd8d17}.low{background:#effaf4;color:#39a06b}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.summary{min-height:67px;border:1px solid #eeeeF1;border-radius:11px;padding:12px 13px}.summary-label{font-size:10px;color:#85858e}.summary-value{font-size:12px;font-weight:600;margin:6px 0}.summary-note{font-size:9px;color:#43a36e}
+.files{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.file{height:98px;border:1px solid #e9e9ed;border-radius:11px;padding:12px;background:#fff}.file-icon{font-size:18px;margin-bottom:9px}.file b{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.file small{font-size:9px;color:#888;margin-top:5px;display:block}
+.right{display:grid;gap:16px;align-content:start}.side{padding:20px}.upcoming{display:grid;gap:17px;margin-top:19px}.event{display:flex;gap:12px}.event-icon{width:33px;height:33px;border-radius:10px;background:#f1efff;color:#6446f5;display:grid;place-items:center;font-size:15px}.event-icon.green{background:#ecf9f1;color:#35a96f}.event b{font-size:12px}.event small{display:block;color:#85858e;font-size:10px;margin-top:4px}
+.conversations{margin-top:5px}.conversation{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #ededf0}.conversation:last-child{border:0}.conversation span{font-size:11px}.conversation small{font-size:9px;color:#999;white-space:nowrap}
+.insight-box{margin-top:15px;border-radius:12px;padding:13px 0 0}.chart{height:66px;width:100%;margin-top:8px}.chart svg{width:100%;height:100%}.insight-text{font-size:11px;line-height:1.55;color:#45454d;margin-top:10px}.insight-text b{font-size:13px}
+.floating{position:fixed;right:68px;bottom:43px;height:55px;border:0;border-radius:30px;background:#17171b;color:#fff;padding:0 25px;font-size:14px;box-shadow:0 13px 30px rgba(0,0,0,.16)}
+.floating:hover{transform:translateY(-2px)}
+.toast{position:fixed;left:50%;bottom:25px;transform:translate(-50%,20px);background:#17171b;color:white;border-radius:12px;padding:12px 18px;font-size:12px;opacity:0;pointer-events:none;transition:.25s;z-index:20}.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:1050px){.sidebar{width:82px}.brand{justify-content:center;margin-left:0;margin-right:0}.brand>div:not(.brand-logo),.nav button span:not(.nav-icon),.new,.profile-name,.profile-plan,.chev{display:none}.nav button{justify-content:center;padding:0}.main{margin-left:82px;width:calc(100% - 82px)}.grid{grid-template-columns:1fr}.right{grid-template-columns:1fr 1fr}.floating{right:24px}}
+@media(max-width:700px){.sidebar{display:none}.main{margin:0;width:100%;padding:14px}.content{margin-top:8px}.search{width:200px}.grid,.stats,.summary-grid,.files,.right{grid-template-columns:1fr}.hero{height:auto}.greeting h1{font-size:24px}.floating{bottom:18px;right:18px}.topbar{gap:5px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="window-dots"><i class="red"></i><i class="yellow"></i><i class="green"></i></div>
+  <div class="brand"><div class="brand-logo">A</div><div><div class="brand-name">Aira</div><div class="brand-sub">Your Personal AI</div></div></div>
+
+  <nav class="nav">
+    <button class="active"><span class="nav-icon">⌂</span><span>Home</span></button>
+    <button><span class="nav-icon">◌</span><span>Chat</span></button>
+    <button><span class="nav-icon">✓</span><span>Tasks</span></button>
+    <button><span class="nav-icon">□</span><span>Calendar</span></button>
+    <button><span class="nav-icon">▱</span><span>Knowledge</span></button>
+    <button><span class="nav-icon">⌁</span><span>Insights</span></button>
+    <button><span class="nav-icon">◇</span><span>Automations</span></button>
+    <button><span class="nav-icon">↗</span><span>Integrations</span></button>
+  </nav>
+  <div class="sep"></div>
+  <nav class="nav">
+    <button><span class="nav-icon">✧</span><span class="memory">Memory <em class="new">New</em></span></button>
+    <button><span class="nav-icon">⚙</span><span>Settings</span></button>
+    <button><span class="nav-icon">?</span><span>Help & Support</span></button>
+  </nav>
+  <div class="profile"><div class="avatar">R</div><div><div class="profile-name">Rohit Gallipalli</div><div class="profile-plan">Pro Plan</div></div><span class="chev">⌄</span></div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <label class="search">⌕<input id="search" placeholder="Search anything..."><span class="shortcut">⌘ K</span></label>
+    <button class="top-icon" onclick="toast('No new notifications')">♧</button>
+    <div class="user-orb">A</div>
+  </header>
+
+  <div class="content">
+    <div class="greeting"><h1>Good morning, Rohit. ☀️</h1><p>Here's your overview for today.</p></div>
+
+    <div class="grid">
+      <section>
+        <div class="card hero">
+          <div class="ready"><span class="ready-dot"></span>Aira is ready to help</div>
+          <h2>How can I help you today?</h2>
+          <div class="prompt">
+            <input id="prompt" placeholder="Ask me anything...">
+            <button class="attach" onclick="toast('Attachment picker opened')">⌕</button>
+            <button class="mic" onclick="toast('Voice input ready')">♩</button>
+            <button class="send" onclick="ask()">↑</button>
+          </div>
+          <div class="quick">
+            <button onclick="fill('Plan my day')">◫ &nbsp;Plan my day</button>
+            <button onclick="fill('Summarize this document')">▤ &nbsp;Summarize this doc</button>
+            <button onclick="fill('Write an email')">✎ &nbsp;Write an email</button>
+            <button onclick="fill('Analyze my data')">⌁ &nbsp;Analyze my data</button>
+            <button onclick="fill('Show me more')">More⌄</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="card stat"><small>Today's priorities</small><strong>3</strong><span>1 high priority</span></div>
+          <div class="card stat"><small>Focus time</small><strong>2h 45m</strong><span class="up">↑ 35m this week</span></div>
+          <div class="card stat"><small>Completed</small><strong>6</strong><span>tasks this week</span></div>
+        </div>
+
+        <div class="card section">
+          <div class="section-head"><h3>Today's Priorities</h3><button class="view">View all</button></div>
+          <div class="tasks">
+            <div class="task"><span class="num">1</span><span class="task-title">Finalize Aira product design</span><span class="pill high">High</span><small>Due today</small></div>
+            <div class="task"><span class="num">2</span><span class="task-title">Investor pitch deck review</span><span class="pill medium">Medium</span><small>Due today</small></div>
+            <div class="task"><span class="num">3</span><span class="task-title">Team standup preparation</span><span class="pill low">Low</span><small>Due tomorrow</small></div>
+          </div>
+        </div>
+
+        <div class="card section">
+          <div class="section-head"><h3>Aira's Summary</h3><button class="view">View insights</button></div>
+          <div class="summary-grid">
+            <div class="summary"><div class="summary-label">You were most productive</div><div class="summary-value">Tuesday at 10:00 AM</div><div class="summary-note">↑ 18% from last week</div></div>
+            <div class="summary"><div class="summary-label">You completed</div><div class="summary-value">6 tasks this week</div><div class="summary-note">Great consistency!</div></div>
+            <div class="summary"><div class="summary-label">Focus time</div><div class="summary-value">12h 45m this week</div><div class="summary-note">↑ 2h 15m from last week</div></div>
+          </div>
+        </div>
+
+        <div class="card section">
+          <div class="section-head"><h3>Recent Knowledge</h3><button class="view">View all</button></div>
+          <div class="files">
+            <div class="file"><div class="file-icon">📕</div><b>Aira Product Strategy.pdf</b><small>PDF · 2.4 MB</small></div>
+            <div class="file"><div class="file-icon">🔑</div><b>Pitch Deck May 2024.key</b><small>KEY · 12.5 MB</small></div>
+            <div class="file"><div class="file-icon">📘</div><b>User Research Insights.docx</b><small>DOCX · 1.8 MB</small></div>
+            <div class="file"><div class="file-icon">📊</div><b>Competitor Analysis.xlsx</b><small>XLSX · 980 KB</small></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="right">
+        <div class="card side">
+          <div class="section-head"><h3>Upcoming</h3><button class="view">View all</button></div>
+          <div class="upcoming">
+            <div class="event"><div class="event-icon">□</div><div><b>Team Standup</b><small>Today, 10:00 AM</small></div></div>
+            <div class="event"><div class="event-icon">□</div><div><b>Product Review</b><small>Today, 11:30 AM</small></div></div>
+            <div class="event"><div class="event-icon green">◷</div><div><b>Client Call</b><small>Today, 4:30 PM</small></div></div>
+          </div>
+        </div>
+
+        <div class="card side">
+          <div class="section-head"><h3>Recent Conversations</h3><button class="view">View all</button></div>
+          <div class="conversations">
+            <div class="conversation"><span>◌ &nbsp; Marketing strategy brainstorm</span><small>2h ago</small></div>
+            <div class="conversation"><span>◌ &nbsp; Explain quantum computing</span><small>Yesterday</small></div>
+            <div class="conversation"><span>◌ &nbsp; Best habits for productivity</span><small>2 days ago</small></div>
+            <div class="conversation"><span>◌ &nbsp; Ideas for content creation</span><small>3 days ago</small></div>
+          </div>
+        </div>
+
+        <div class="card side">
+          <div class="section-head"><h3>Aira Insights</h3><button class="view">View insights</button></div>
+          <div class="insight-box">
+            <svg class="chart" viewBox="0 0 310 66" preserveAspectRatio="none">
+              <defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#7356f5" stop-opacity=".18"/><stop offset="1" stop-color="#7356f5" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0 27 C18 29 28 40 46 32 S74 39 92 31 S119 35 135 44 S161 49 177 38 S202 45 219 27 S246 35 264 22 S289 19 310 10 L310 66 L0 66Z" fill="url(#fill)"/>
+              <path d="M0 27 C18 29 28 40 46 32 S74 39 92 31 S119 35 135 44 S161 49 177 38 S202 45 219 27 S246 35 264 22 S289 19 310 10" fill="none" stroke="#6d4cf2" stroke-width="2.2"/>
+              <circle cx="310" cy="10" r="4" fill="#6d4cf2"/>
+            </svg>
+            <div class="insight-text">Your productivity is up <b>18%</b><br>compared to last week. 🚀</div>
+            <button class="view" style="padding:14px 0 0">View insights ›</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</main>
+</div>
+
+<button class="floating" onclick="document.getElementById('prompt').focus()">✧ &nbsp; Ask Aira &nbsp; ⌘ /</button>
+<div class="toast" id="toast"></div>
+
+<script>
+const promptEl=document.getElementById('prompt');
+function fill(t){promptEl.value=t;promptEl.focus()}
+function ask(){const v=promptEl.value.trim();if(!v){promptEl.focus();return}toast('Aira is preparing a response…')}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(window.t);window.t=setTimeout(()=>el.classList.remove('show'),2200)}
+promptEl.addEventListener('keydown',e=>{if(e.key==='Enter')ask()});
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.getElementById('search').focus()}});
+</script>
+</body>
+</html>
