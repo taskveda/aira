@@ -33,7 +33,7 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.taskveda.aira</string>
+    <string>com.taskveda.aira.popup</string>
     <key>CFBundleName</key>
     <string>Aira</string>
     <key>CFBundleDisplayName</key>
