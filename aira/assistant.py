@@ -45,8 +45,8 @@ def _greeting(first=False):
     else:
         part = "good evening"
     if first:
-        return f"Hey Rohit, {part}. What are we building today?"
-    return f"Hey Rohit, {part}. Go ahead."
+        return f"Hey Rohit, {part}. How are you doing?"
+    return f"Yes, Rohit? What do you need?"
 
 
 def _open_popup():
@@ -66,6 +66,11 @@ def run_assistant(cfg):
     server = make_server(cfg)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     print(f"Aira assistant live — text in the popup/browser (http://{HOST}:{PORT}) or say \"Hey Aira\".")
+
+    if not cfg.get("voice", {}).get("hey_aira", True):
+        print("[assistant] voice.hey_aira is disabled in config.yaml — hands-free wake is off. Text (popup/browser) still works.")
+        while True:   # keep the web/popup server alive; text-only
+            time.sleep(3600)
 
     poll = float(cfg.get("voice", {}).get("poll_seconds", 2.5))
     utter = float(cfg.get("voice", {}).get("utterance_seconds", 10))
@@ -102,10 +107,10 @@ def run_assistant(cfg):
                 if not heard or not voice_mod.is_wake(heard):
                     continue
                 voice_mod.beep()
-                voice_mod.speak(_greeting(first_greeting), cfg)
+                Handler.summon()                       # panel rises first…
+                voice_mod.speak(_greeting(first_greeting), cfg)  # …then greet aloud (edge-tts), right as it appears
                 first_greeting = False
-                Handler.summon()
-                rec2 = voice_mod.record_mic(utterance, utter)
+                rec2 = voice_mod.record_mic(utterance, utter)    # …then listen for the task
                 if not rec2["ok"]:
                     continue
                 stt2 = voice_mod.transcribe(utterance, cfg)

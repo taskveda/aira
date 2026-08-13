@@ -25,6 +25,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     let sendButton = NSButton()
     let statusLabel = NSTextField(labelWithString: "")
 
+    // Siri-style signature orb (gradient sphere + expanding listening ring)
+    let orbHost = NSView()
+    let orbGradient = CAGradientLayer()
+    let orbRing = CAShapeLayer()
+    var listening = false
+
     var recorder: AVAudioRecorder?
     var recordingURL: URL?
     var pendingApprovalShown = false
@@ -182,6 +188,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         root.addArrangedSubview(scrollView)
         root.addArrangedSubview(inputRow)
 
+        buildOrb()
+        root.insertArrangedSubview(orbHost, at: 0)
+        setOrbVisibility()
+
         NSLayoutConstraint.activate([
             root.leadingAnchor.constraint(equalTo: effect.leadingAnchor),
             root.trailingAnchor.constraint(equalTo: effect.trailingAnchor),
@@ -190,6 +200,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
             head.widthAnchor.constraint(equalTo: root.widthAnchor, constant: -28),
             inputRow.widthAnchor.constraint(equalTo: root.widthAnchor, constant: -28),
             inputField.heightAnchor.constraint(equalToConstant: 30),
+            orbHost.widthAnchor.constraint(equalTo: root.widthAnchor, constant: -28),
+            orbHost.heightAnchor.constraint(equalToConstant: 104),
             scrollView.widthAnchor.constraint(equalTo: root.widthAnchor, constant: -28),
             chatStack.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
             dot.widthAnchor.constraint(equalToConstant: 10),
@@ -204,6 +216,78 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         guard let screen = NSScreen.main?.visibleFrame else { return }
         let w = panel.frame.width, h = panel.frame.height
         panel.setFrameOrigin(NSPoint(x: screen.midX - w / 2, y: screen.maxY - h - 28))
+    }
+
+    // MARK: - Siri orb
+
+    func buildOrb() {
+        orbHost.wantsLayer = true
+        let orbSize: CGFloat = 58
+
+        let orb = NSView(frame: NSRect(x: 0, y: 0, width: orbSize, height: orbSize))
+        orb.wantsLayer = true
+        orbGradient.colors = [
+            NSColor(calibratedRed: 0.31, green: 0.49, blue: 1.0, alpha: 1).cgColor,
+            NSColor(calibratedRed: 0.55, green: 0.36, blue: 0.96, alpha: 1).cgColor,
+        ]
+        orbGradient.startPoint = CGPoint(x: 0.25, y: 0.15)
+        orbGradient.endPoint = CGPoint(x: 0.85, y: 0.9)
+        orbGradient.cornerRadius = orbSize / 2
+        orbGradient.masksToBounds = true
+        orb.layer = orbGradient
+
+        orbRing.frame = orb.bounds
+        orbRing.path = CGPath(ellipseIn: orb.bounds.insetBy(dx: 2, dy: 2), transform: nil)
+        orbRing.strokeColor = NSColor(calibratedRed: 0.55, green: 0.36, blue: 0.96, alpha: 0.85).cgColor
+        orbRing.fillColor = NSColor.clear.cgColor
+        orbRing.lineWidth = 2
+        orbRing.opacity = 0
+        orbGradient.addSublayer(orbRing)
+
+        orb.translatesAutoresizingMaskIntoConstraints = false
+        orbHost.addSubview(orb)
+        NSLayoutConstraint.activate([
+            orb.centerXAnchor.constraint(equalTo: orbHost.centerXAnchor),
+            orb.centerYAnchor.constraint(equalTo: orbHost.centerYAnchor),
+            orb.widthAnchor.constraint(equalToConstant: orbSize),
+            orb.heightAnchor.constraint(equalToConstant: orbSize),
+        ])
+    }
+
+    func setOrbVisibility() {
+        orbRing.opacity = listening ? 1 : 0
+    }
+
+    func setListening(_ on: Bool) {
+        listening = on
+        let anim = CABasicAnimation(keyPath: "transform.scale")
+        anim.fromValue = 1.0; anim.toValue = 1.8; anim.duration = 0.45
+        anim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        orbGradient.add(anim, forKey: "lit")
+        if on {
+            orbRing.opacity = 1
+            let pulse = CABasicAnimation(keyPath: "transform.scale")
+            pulse.fromValue = 1.0; pulse.toValue = 1.7; pulse.duration = 1.1
+            pulse.repeatCount = .infinity; pulse.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 0.7; fade.toValue = 0.0; fade.duration = 1.1
+            fade.repeatCount = .infinity
+            orbRing.removeAllAnimations()
+            orbRing.add(pulse, forKey: "ringScale")
+            orbRing.add(fade, forKey: "ringFade")
+        } else {
+            orbRing.removeAllAnimations()
+            orbRing.opacity = 0
+        }
+    }
+
+    var ringStopTimer: Timer?
+    func pulseListening(_ seconds: Double) {
+        ringStopTimer?.invalidate()
+        setListening(true)
+        ringStopTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async { self?.setListening(false) }
+        }
     }
 
     // MARK: - Toggle
@@ -362,6 +446,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
             rec.record()
             micButton.contentTintColor = .systemRed
             statusLabel.stringValue = "Listening… tap mic to stop"
+            setListening(true)
         } catch {
             statusLabel.stringValue = "Recording failed: \(error.localizedDescription)"
         }
@@ -371,6 +456,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         guard let url = recordingURL, let data = try? Data(contentsOf: url) else { return }
         micButton.contentTintColor = nil
         statusLabel.stringValue = "Transcribing…"
+        setListening(false)
         var req = URLRequest(url: URL(string: "\(API_BASE)/api/stt")!)
         req.httpMethod = "POST"
         req.setValue("audio/wav", forHTTPHeaderField: "Content-Type")
@@ -437,6 +523,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
             DispatchQueue.main.async {
                 if json?["summon"] as? Bool == true {
                     self.showPopup()
+                    self.pulseListening(12)   // assistant is listening for the task — animate the orb
                 }
             }
         }.resume()
