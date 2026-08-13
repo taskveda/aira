@@ -43,6 +43,7 @@ MEMORY & LEARNING (Letta-style, you CAN edit your own memory):
 - Important new durable facts (preferences, projects, constraints) → call memory_add.
 - To stop remembering something → memory_forget.
 - When you discover a reusable multi-step recipe after doing a real task, save it with learn_skill(name, description, recipe) so next time is one step, not ten.
+- If the current task matches a saved skill (listed above, or auto-injected as ACTIVE SKILL), call skill_use(name) first — load the recipe and follow it. Reuse, don't reinvent.
 - Never invent memory content. Only store what you actually did or were told."""
 
 TOOLS = [
@@ -230,13 +231,25 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "skill_use",
+            "description": "Load a saved skill/recipe into context and mark it used. Call FIRST when the current task matches a learned skill — reuse the recipe, don't reinvent it.",
+            "parameters": {
+                "type": "object",
+                "properties": {"name": {"type": "string", "description": "Skill name to load, e.g. 'LinkedIn Hooks'"}},
+                "required": ["name"],
+            },
+        },
+    },
 ]
 
 JSON_FALLBACK = """You are Aira, a personal AI assistant with full laptop access.
 Respond ONLY with valid JSON, either:
 {"tool": "name", "args": {...}}  to call a tool
 or {"reply": "text"}  to answer directly.
-Available tools: run_shell, list_dir, read_file, write_file, search_files, open_app, osascript, web_search, fetch_url, rss_read, research_to_csv, tts_speak, notify, get_time."""
+Available tools: run_shell, list_dir, read_file, write_file, search_files, open_app, osascript, web_search, fetch_url, rss_read, research_to_csv, tts_speak, notify, get_time, memory_add, memory_forget, learn_skill, skill_use."""
 
 
 def _clean(content):
@@ -317,10 +330,14 @@ class Brain:
         persona = _persona()
         extra = ""
         try:
-            from .memory_store import bundle
+            from .memory_store import bundle, skill_trigger
+            user_txt = " ".join(m.get("content", "") for m in messages if m.get("role") == "user")
             mem = bundle()
             if mem:
                 extra = f"\n\n--- AIRA'S PERSISTENT MEMORY (you can edit via tools) ---\n{mem}"
+            trigger = skill_trigger(user_txt)
+            if trigger:
+                extra += trigger
         except Exception:
             pass
         system = SYSTEM_PROMPT + (f"\n\n--- ROHIT'S LIVE CONTEXT (read only, local) ---\n{persona}" if persona else "") + extra
@@ -483,10 +500,13 @@ class Brain:
             persona = _persona()
             extra = ""
             try:
-                from .memory_store import bundle
+                from .memory_store import bundle, skill_trigger
                 mem = bundle()
                 if mem:
                     extra = f"\n\n--- AIRA'S PERSISTENT MEMORY (you can edit via tools) ---\n{mem}"
+                trigger = skill_trigger(user_text)
+                if trigger:
+                    extra += trigger
             except Exception:
                 pass
             system = SYSTEM_PROMPT + (f"\n\n--- ROHIT'S LIVE CONTEXT (read only, local) ---\n{persona}" if persona else "") + extra

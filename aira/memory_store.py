@@ -12,6 +12,7 @@ remembers.
 """
 
 import json
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -130,18 +131,92 @@ def learn_skill(name, description, recipe, tags=None):
     return {"ok": True, "name": name}
 
 
-def use_skill(name):
-    """Mark a skill as used (so Aira learns which recipes actually help)."""
-    p = SKILLS_DIR / f"{name.replace(' ', '_')}.json"
-    if not p.exists():
+def _skill_path(name):
+    """Resolve a skill's file by name (spaces <-> underscores, case-insensitive)."""
+    name = " ".join(str(name).split())
+    if not name:
+        return None
+    wanted = name.replace(" ", "_").lower()
+    if not SKILLS_DIR.exists():
+        return None
+    for p in SKILLS_DIR.glob("*.json"):
+        if p.stem.lower() == wanted:
+            return p
+    return None
+
+
+def get_skill(name):
+    """Load one full skill record (name, description, recipe, tags) or None."""
+    p = _skill_path(name)
+    if not p:
         return None
     try:
-        skill = json.loads(p.read_text(errors="replace"))
+        return json.loads(p.read_text(errors="replace"))
+    except Exception:
+        return None
+
+
+def use_skill(name):
+    """Mark a skill as used (so Aira learns which recipes actually help) and
+    return its full record, or None if it doesn't exist."""
+    skill = get_skill(name)
+    if not skill:
+        return None
+    try:
         skill["times_used"] = skill.get("times_used", 0) + 1
         skill["last_used"] = _now()
-        p.write_text(json.dumps(skill, indent=2, ensure_ascii=False))
+        _skill_path(name).write_text(json.dumps(skill, indent=2, ensure_ascii=False))
     except Exception:
         pass
+    return skill
+
+
+def find_skill(task, min_score=1):
+    """Best matching saved skill for a task, scored on keyword overlap with the
+    skill's name/tags/description. Returns the full record or None."""
+    task = " ".join(str(task).split()).lower()
+    if not task or not SKILLS_DIR.exists():
+        return None
+    words = set(re.findall(r"[a-z0-9]+", task))
+    if not words:
+        return None
+    stop = {"a", "an", "the", "to", "of", "for", "and", "or", "with", "in", "on", "at", "how", "do", "i", "you", "me", "my", "is", "it", "this", "that"}
+    keywords = {w for w in words if len(w) > 2 and w not in stop}
+    if not keywords:
+        return None
+    best, best_score = None, 0
+    for p in sorted(SKILLS_DIR.glob("*.json")):
+        try:
+            skill = json.loads(p.read_text(errors="replace"))
+        except Exception:
+            continue
+        hay = " ".join([
+            skill.get("name", ""),
+            skill.get("description", ""),
+            " ".join(skill.get("tags", [])),
+        ]).lower()
+        hay_words = set(re.findall(r"[a-z0-9]+", hay))
+        score = sum(1 for w in keywords if w in hay_words)
+        if score > best_score:
+            best, best_score = skill, score
+    if best_score >= min_score:
+        return best
+    return None
+
+
+def skill_trigger(task):
+    """Auto-trigger: if a saved skill matches the task, mark it used and return
+    a context block teaching Aira the recipe — so it reuses, not reinvents."""
+    skill = find_skill(task)
+    if not skill:
+        return ""
+    use_skill(skill.get("name", ""))
+    return (
+        "\n\n--- ACTIVE SKILL (this task matches one you learned) ---\n"
+        f"Name: {skill.get('name')}\n"
+        f"What it's for: {skill.get('description')}\n"
+        f"Recipe — follow it, don't reinvent:\n{skill.get('recipe')}"
+    )
 
 
 def list_skills(needle=""):
@@ -166,8 +241,8 @@ def list_skills(needle=""):
 
 
 def delete_skill(name):
-    p = SKILLS_DIR / f"{name.replace(' ', '_')}.json"
-    if not p.exists():
+    p = _skill_path(name)
+    if not p:
         return {"ok": False, "error": f"no skill named '{name}'"}
     p.unlink()
     return {"ok": True, "deleted": name}

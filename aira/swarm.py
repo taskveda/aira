@@ -19,11 +19,14 @@ from .brain import SYSTEM_PROMPT, TOOLS, _clean
 MAX_SPECIALISTS_PER_ROUND = 3
 MAX_ROUNDS = 4
 
+# Every specialist can also maintain Aira's memory/skills mid-task.
+MEMORY_TOOLS = ["memory_add", "memory_forget", "learn_skill", "skill_use"]
+
 # Each specialist: a persona contract + the tools it is allowed to use.
 SPECIALISTS = {
     "content": {
         "name": "Content Agent",
-        "tools": ["run_shell", "list_dir", "read_file", "write_file", "web_search", "fetch_url", "get_time", "open_app"],
+        "tools": ["run_shell", "list_dir", "read_file", "write_file", "web_search", "fetch_url", "get_time", "open_app"] + MEMORY_TOOLS,
         "system": """You are AIRA's CONTENT AGENT. You own LinkedIn + Instagram output for Rohit (TaskVeda founder).
 Use his writing style, the FIMA framework, and the source material in context. Deliver a finished,
 publication-ready post (hook + body + 1 quotable line + ending question + max 5 hashtags on the final line).
@@ -32,7 +35,7 @@ Never ask 'What do you think?'. Open-ended question requiring experience to answ
     },
     "research": {
         "name": "Research Agent",
-        "tools": ["web_search", "fetch_url", "rss_read", "research_to_csv", "read_file", "write_file", "get_time"],
+        "tools": ["web_search", "fetch_url", "rss_read", "research_to_csv", "read_file", "write_file", "get_time"] + MEMORY_TOOLS,
         "system": """You are AIRA's RESEARCH AGENT. Verify every claim against 2+ independent sources. Never fabricate facts,
 statistics, or quotes. Show confidence (HIGH/MEDIUM/LOW) and cite sources. Separate fact from interpretation from
 speculation. For founder analysis, state the implication and the hidden opportunity. Use research_to_csv to save
@@ -40,7 +43,7 @@ structured findings to ~/aira/data when there are multiple results. Prefer his r
     },
     "email": {
         "name": "Email Agent",
-        "tools": ["run_shell", "read_file", "write_file", "get_time"],
+        "tools": ["run_shell", "read_file", "write_file", "get_time"] + MEMORY_TOOLS,
         "system": """You are AIRA's EMAIL AGENT. Triage the inbox: kill spam, draft replies in Rohit's direct, decisive voice,
 escalate only what truly needs his eyes (money, reputation, his words). Digest, never dump. For each important item:
 one-line summary + a ready-to-send reply. Never invent emails that don't exist — if you can't read mail, say exactly
@@ -48,14 +51,14 @@ that and give the triage rules instead.""",
     },
     "deals": {
         "name": "Brand Deals Agent",
-        "tools": ["web_search", "read_file", "write_file", "run_shell", "get_time"],
+        "tools": ["web_search", "read_file", "write_file", "run_shell", "get_time"] + MEMORY_TOOLS,
         "system": """You are AIRA's BRAND DEALS AGENT. Your job is inbound money. Spot opportunities, qualify them fast,
 and produce a short opportunity note + a draft outreach/negotiation reply in Rohit's voice. Every deal = a note +
 a draft. Be specific about terms (rate, deliverables, timeline). Never accept a deal on his behalf — present options.""",
     },
     "exec": {
         "name": "Executor Agent",
-        "tools": ["run_shell", "list_dir", "read_file", "write_file", "search_files", "open_app", "osascript", "get_time"],
+        "tools": ["run_shell", "list_dir", "read_file", "write_file", "search_files", "open_app", "osascript", "get_time"] + MEMORY_TOOLS,
         "system": """You are AIRA's EXECUTOR AGENT. You get things done on the Mac: shell, files, apps, research-to-disk.
 Do the work, verify it (re-read the file / re-run the command), and report exactly what you did and where it's saved.
 Safe actions run immediately; destructive/system-changing commands (rm, sudo, kill, overwrites) require approval.
@@ -105,8 +108,14 @@ class Swarm:
         """Run one specialist agent (with its own tools) over the task. Returns its draft answer."""
         spec = SPECIALISTS[agent_id]
         tools = [t for t in TOOLS if t["function"]["name"] in spec["tools"]]
+        system = self.context + "\n\n" + spec["system"] + "\n\n" + SYSTEM_PROMPT
+        try:
+            from .memory_store import skill_trigger
+            system += skill_trigger(task)
+        except Exception:
+            pass
         msgs = [
-            {"role": "system", "content": self.context + "\n\n" + spec["system"] + "\n\n" + SYSTEM_PROMPT},
+            {"role": "system", "content": system},
             {"role": "user", "content": task},
         ]
         return self._run_with_tools(msgs, tools)
@@ -168,7 +177,13 @@ class Swarm:
 
         # Chat-only task — no specialists needed.
         if not agents:
-            return _clean(self.brain.complete([{"role": "system", "content": SYSTEM_PROMPT}] + messages, temperature=0.5))
+            system = SYSTEM_PROMPT
+            try:
+                from .memory_store import skill_trigger
+                system += skill_trigger(task)
+            except Exception:
+                pass
+            return _clean(self.brain.complete([{"role": "system", "content": system}] + messages, temperature=0.5))
 
         # 2. Fan out.
         drafts = []

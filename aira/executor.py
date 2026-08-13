@@ -206,3 +206,12 @@ class ToolExecutor:
         from . import memory_store
         return memory_store.learn_skill(
             args.get("name", ""), args.get("description", ""), args.get("recipe", ""), tags=args.get("tags"))
+
+    def skill_use(self, args):
+        from . import memory_store
+        skill = memory_store.use_skill(args.get("name", ""))
+        if not skill:
+            available = memory_store.list_skills()
+            names = ", ".join(s["name"] for s in available) or "none"
+            return {"ok": False, "error": f"no skill named '{args.get('name', '')}'. Saved skills: {names}"}
+        return {"ok": True, "name": skill.get("name"), "description": skill.get("description"), "recipe": skill.get("recipe")}
