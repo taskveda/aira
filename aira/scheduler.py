@@ -17,6 +17,7 @@ class Scheduler:
     def run(self):
         while self._running:
             now = datetime.now()
+            self._check_reminders()
             for job in self.config.get("jobs", []):
                 expr = job.get("cron")
                 if not expr:
@@ -27,6 +28,20 @@ class Scheduler:
                     threading.Thread(target=self._execute, args=(job,), daemon=True).start()
                     it = croniter(expr, now)
             time.sleep(30)
+
+    def _check_reminders(self):
+        """Surface any due reminders to the digest channel (once)."""
+        try:
+            from . import productivity
+            due = productivity.reminder_due()
+            if not due:
+                return
+            channel = self.config.digest_channel()
+            session = self.session_factory(channel)
+            for r in due:
+                session.post_text(f"*⏰ Reminder:* {r['text']}  (due {r['due_at']})")
+        except Exception as exc:
+            print(f"[aira] reminder check error: {exc}")
 
     def _execute(self, job):
         try:

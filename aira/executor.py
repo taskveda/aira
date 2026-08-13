@@ -219,3 +219,65 @@ class ToolExecutor:
             names = ", ".join(s["name"] for s in available) or "none"
             return {"ok": False, "error": f"no skill named '{args.get('name', '')}'. Saved skills: {names}"}
         return {"ok": True, "name": skill.get("name"), "description": skill.get("description"), "recipe": skill.get("recipe")}
+
+    # ------------------------------------------------------------------ #
+    # Productivity: email send, calendar, reminders, knowledge, connectors #
+    # ------------------------------------------------------------------ #
+
+    def send_email(self, args):
+        from . import productivity
+        return productivity.send_email(
+            self.config,
+            to=args.get("to", ""),
+            subject=args.get("subject", ""),
+            body=args.get("body", ""),
+            cc=args.get("cc"),
+            bcc=args.get("bcc"),
+            html=args.get("html"),
+        )
+
+    def calendar_add(self, args):
+        from . import productivity
+        return productivity.calendar_add(
+            args.get("title", ""),
+            args.get("start_at", ""),
+            end_at=args.get("end_at"),
+            location=args.get("location", ""),
+            notes=args.get("notes", ""),
+        )
+
+    def calendar_list(self, args):
+        from . import productivity
+        return productivity.calendar_list(day=args.get("day"), days_ahead=int(args.get("days_ahead") or 7))
+
+    def calendar_delete(self, args):
+        from . import productivity
+        return productivity.calendar_delete(args.get("id"))
+
+    def reminder_add(self, args):
+        from . import productivity
+        return productivity.reminder_add(args.get("text", ""), args.get("due_at", ""))
+
+    def reminder_list(self, args):
+        from . import productivity
+        return productivity.reminder_list(include_done=bool(args.get("include_done")))
+
+    def knowledge_add(self, args):
+        from . import productivity
+        return productivity.knowledge_add(args.get("paths", []))
+
+    def knowledge_search(self, args):
+        from . import productivity
+        return productivity.knowledge_search(args.get("query", ""), limit=int(args.get("limit") or 5))
+
+    def knowledge_list(self, args=None):
+        from . import productivity
+        return productivity.knowledge_list()
+
+    def connectors(self, args=None):
+        from . import productivity
+        return productivity.connector_status()
+
+    def connector_enable(self, args):
+        from . import productivity
+        return productivity.connector_enable(args.get("name", ""), enabled=args.get("enabled", True))

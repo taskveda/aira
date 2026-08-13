@@ -25,6 +25,8 @@ DEFAULTS = {
     "email": {
         "enabled": False,
         "imap_host": "imap.gmail.com",
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": 587,
         "user_env": "AIRA_EMAIL_USER",
         "pass_env": "AIRA_EMAIL_PASS",
         "poll_minutes": 5,

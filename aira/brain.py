@@ -243,13 +243,136 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_email",
+            "description": "Send an email (SMTP) from Rohit's configured account. Use for drafts/replies/outreach. Returns ok/error if not configured.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "to": {"type": "string", "description": "Recipient email(s), comma-separated"},
+                    "subject": {"type": "string"},
+                    "body": {"type": "string"},
+                    "cc": {"type": "string"},
+                    "bcc": {"type": "string"},
+                },
+                "required": ["to", "subject", "body"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calendar_add",
+            "description": "Add an event to Aira's calendar. start_at/end_at in ISO 8601 local time, e.g. '2026-08-14T18:00:00'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "start_at": {"type": "string"},
+                    "end_at": {"type": "string"},
+                    "location": {"type": "string"},
+                    "notes": {"type": "string"},
+                },
+                "required": ["title", "start_at"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calendar_list",
+            "description": "List calendar events. Use day='YYYY-MM-DD' for one day, or days_ahead for the next N days (default 7).",
+            "parameters": {
+                "type": "object",
+                "properties": {"day": {"type": "string"}, "days_ahead": {"type": "integer"}},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calendar_delete",
+            "description": "Delete a calendar event by its id.",
+            "parameters": {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reminder_add",
+            "description": "Set a reminder. due_at in ISO 8601 local time, e.g. '2026-08-14T15:00:00'. Aira will surface it when due.",
+            "parameters": {
+                "type": "object",
+                "properties": {"text": {"type": "string"}, "due_at": {"type": "string"}},
+                "required": ["text", "due_at"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reminder_list",
+            "description": "List pending reminders.",
+            "parameters": {"type": "object", "properties": {"include_done": {"type": "boolean"}}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "knowledge_add",
+            "description": "Index one or more file paths (list of strings) into Aira's local knowledge base so it can answer from your own documents.",
+            "parameters": {"type": "object", "properties": {"paths": {"type": "array", "items": {"type": "string"}}}, "required": ["paths"]},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "knowledge_search",
+            "description": "Search Aira's indexed local knowledge base for a query. Use before answering from 'your' documents.",
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string"}, "limit": {"type": "integer"}},
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "knowledge_list",
+            "description": "List documents currently in the local knowledge base.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "connectors",
+            "description": "List available external connectors (gmail, google_calendar, notion, whatsapp, slack, ntfy) and whether each is enabled.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "connector_enable",
+            "description": "Enable or disable a connector. Name from the connectors list, e.g. gmail, notion.",
+            "parameters": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "enabled": {"type": "boolean"}},
+                "required": ["name"],
+            },
+        },
+    },
 ]
 
 JSON_FALLBACK = """You are Aira, a personal AI assistant with full laptop access.
 Respond ONLY with valid JSON, either:
 {"tool": "name", "args": {...}}  to call a tool
 or {"reply": "text"}  to answer directly.
-Available tools: run_shell, list_dir, read_file, write_file, search_files, open_app, osascript, web_search, fetch_url, rss_read, research_to_csv, tts_speak, notify, get_time, memory_add, memory_forget, learn_skill, skill_use."""
+Available tools: run_shell, list_dir, read_file, write_file, search_files, open_app, osascript, web_search, fetch_url, rss_read, research_to_csv, tts_speak, notify, get_time, memory_add, memory_forget, learn_skill, skill_use, send_email, calendar_add, calendar_list, calendar_delete, reminder_add, reminder_list, knowledge_add, knowledge_search, knowledge_list, connectors, connector_enable."""
 
 
 def _clean(content):

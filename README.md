@@ -13,6 +13,12 @@ Aira lives on your Mac, listens on **Slack**, speaks out loud, and thinks with *
 | Exec assistant on your laptop | Shell + file + AppleScript + browser (open) tools |
 | Content research → Sheets | `research_to_csv` → CSV in `~/aira/data` |
 | Scheduled workflows | cron jobs in `config.yaml` |
+| Email gatekeeper | Gmail IMAP scan → DeepSeek triage → digest with "Got it ✅" + Discord escalation |
+| Email sending | `send_email` tool (SMTP) — drafts & replies from your account |
+| Calendar | `calendar_add/list/delete` tools — local store, Google-ready |
+| Reminders | `reminder_add/list` — Aira surfaces due reminders automatically |
+| Knowledge base | `knowledge_add/search/list` — local RAG over your own files |
+| Connectors | `connectors` / `connector_enable` — pluggable app integrations |
 | Voice | Free TTS (edge-tts) audio clips posted to Slack |
 | Lead calls (Vapi/Twilio, costs money) | Not included — DM outreach drafts instead |
 
@@ -195,3 +201,34 @@ Then start it (or reboot — it auto-launches at login):
 
 Tune it in `config.yaml` → `voice:` (`hey_aira`, `poll_seconds`,
 `utterance_seconds`, `wake_words`, `stt_model`).
+
+## Productivity layer
+
+Aira ships with a local-first productivity layer (`aira/productivity.py`)
+that fills the big gaps vs. ChatGPT/Gemini/Lindy — all as new tools:
+
+```bash
+# Email sending (SMTP) — enable in config.yaml:
+#   email.smtp_host, email.smtp_port, email.from_name
+#   export AIRA_EMAIL_USER=you@gmail.com
+#   export AIRA_EMAIL_PASS=<16-char app password>
+# Then ask: "email Priya the meeting notes"  ->  send_email tool
+
+# Calendar (local store, Google-ready)
+#   "add a standup tomorrow 9am"          ->  calendar_add
+#   "what's on my calendar this week?"    ->  calendar_list
+#   "delete that event"                   ->  calendar_delete
+
+# Reminders (auto-surfaced by the scheduler loop)
+#   "remind me to call mom at 3pm"        ->  reminder_add
+
+# Knowledge base (local RAG over your own files)
+#   "index ~/Desktop/AI_Brain"            ->  knowledge_add
+#   "what did I write about agents?"      ->  knowledge_search
+
+# Connectors (pluggable integrations, see `connectors` tool)
+#   gmail, google_calendar, notion, whatsapp, slack, ntfy
+```
+
+Data lives in `~/aira/data/productivity.db` (events, reminders, connectors,
+indexed knowledge).
