@@ -57,6 +57,42 @@ def _open_popup():
     return False
 
 
+_STOP_PHRASES = ("goodbye", "good bye", "bye aira", "see you", "that's all", "thats all", "all done", "stop aira", "never mind")
+
+
+def _converse(cfg, tmpdir, silent_timeout=7.0, poll=3.0):
+    """Siri-style: after Aira answers, keep listening so Rohit can keep talking
+    WITHOUT saying 'Hey Aira' again. Stays in the turn while he keeps speaking
+    and only returns to wake-word mode after a sustained silence gap (or an
+    explicit goodbye). Makes the wake feel like a conversation, not one-shot."""
+    from pathlib import Path
+    clip = Path(tmpdir) / "conv.wav"
+    silent = 0.0
+    while True:
+        rec = voice_mod.record_mic(clip, poll)
+        if not rec["ok"]:
+            return
+        if voice_mod.is_silent(clip):
+            silent += poll
+            if silent >= silent_timeout:
+                return
+            continue
+        silent = 0.0
+        stt = voice_mod.transcribe(clip, cfg)
+        if not stt["ok"]:
+            continue
+        user_text = (stt.get("text") or "").strip()
+        if not user_text:
+            continue
+        if any(p in user_text.lower() for p in _STOP_PHRASES):
+            print("[conv] conversation ended by user.")
+            return
+        print(f"\nYou: {user_text}")
+        reply = _ask(user_text)
+        print(f"Aira: {reply}")
+        voice_mod.speak(reply, cfg)
+
+
 def run_assistant(cfg):
     if not _open_popup():
         print("AiraPopup.app not built yet — run ~/aira/build_popup.sh first.")
@@ -125,6 +161,7 @@ def run_assistant(cfg):
                 reply = _ask(user_text)
                 print(f"Aira: {reply}")
                 voice_mod.speak(reply, cfg)
+                _converse(cfg, tmpdir)   # keep talking until Rohit goes quiet
             except KeyboardInterrupt:
                 print("\nAira assistant stopped.")
                 return 0
