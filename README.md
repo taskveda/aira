@@ -136,6 +136,8 @@ Scheduled (in `config.yaml` by default): carousel Mon–Sat 8 PM, LinkedIn daily
 ├── config.yaml          # all settings
 ├── requirements.txt
 ├── setup.sh
+├── build_popup.sh       # Siri-style overlay app (swiftc)
+├── build_assistant.sh   # Aira.app mic wrapper + launchd login item
 ├── aira/
 │   ├── main.py          # entry point
 │   ├── brain.py         # DeepSeek/Ollama tool-calling loop
@@ -150,43 +152,46 @@ Scheduled (in `config.yaml` by default): carousel Mon–Sat 8 PM, LinkedIn daily
 │   └── cli.py           # terminal mode (no Slack)
 └── data/                # CSVs, history, audio
 
-## Voice mode ("Hey Aira")
+## Assistant mode ("Hey Aira" → Siri-style popup)
 
-Hands-free, spoken Aira. Zero extra installs — it uses ffmpeg (mic) +
-Cloudflare Workers AI Whisper (speech-to-text, same account/key as the
-brain) + edge-tts (speech out).
+One always-on process is **both** the popup/web assistant **and** the
+hands-free voice assistant, sharing a single brain + conversation. Say
+**"Hey Aira"** → the Siri-style glass popup rises with the gradient orb,
+it greets you aloud ("Yes, Rohit? …"), then listens for your task and
+answers out loud.
 
-```bash
-./venv/bin/python -m aira.main --voice
-```
-
-- Say **"Hey Aira"** to wake it, then say your task. It answers out loud.
-- One greeting per day; after that, straight to work.
-- Destructive commands (rm, sudo, kill, overwrites) pause and Aira asks
-  you out loud — answer "yes" or "no".
-- First run: macOS will ask for **microphone access** for your terminal.
-  If it fails, check System Settings → Privacy & Security → Microphone.
-- Cost: whisper is free-tier Cloudflare (~2.5s poll clips); each spoken
-  exchange is one or two STT calls + the brain call.
-
-Tune it in `config.yaml` → `voice:` (poll_seconds, utterance_seconds,
-wake_words, stt_model).
-
-## Siri-style popup
-
-A native macOS overlay, like Siri: press **Option+Space** (or the menu-bar
-icon) and a floating glass panel appears — tap the mic and talk, or just
-type. Aira runs the same agentic brain (tools, research, files, shell) and
-answers in chat bubbles, speaking the reply aloud.
+Requires two one-time builds (Xcode Command Line Tools only, `swiftc`):
 
 ```bash
-./build_popup.sh                              # one-time build (Xcode CLT: swiftc)
-./venv/bin/python -m aira.main --popup         # starts the API server + opens the popup
+./build_popup.sh                              # Siri-style overlay app
+./build_assistant.sh                          # mic-permission wrapper + login item
 ```
 
-- Destructive commands show **Approve / Deny** buttons right in the popup.
-- Speech-to-text uses the same free Cloudflare Whisper; voice-out is
-  edge-tts played via afplay.
-- Mic permission: the app is already signed ad-hoc; grant access when
-  macOS asks, or via System Settings → Privacy & Security → Microphone.
+Then start it (or reboot — it auto-launches at login):
+
+```bash
+./venv/bin/python -m aira.main --assistant
 ```
+
+- **Why `build_assistant.sh`?** macOS (TCC) only grants microphone access to
+  a process running from an `.app` bundle with an `NSMicrophoneUsageDescription`.
+  A bare `python -m aira.main --assistant` under launchd gets **auto-denied**,
+  so the wake word silently never hears you. The script creates a tiny
+  `Aira.app` whose launcher execs the assistant, and installs the
+  `~/Library/LaunchAgents/com.taskveda.aira.plist` login item that runs it.
+  On the first `open Aira.app`, macOS asks "Aira would like to access the
+  microphone" → click **Allow**. After that it works hands-free at every login.
+- **Hey Aira wake word** is fuzzy-matched by sound ("aira", "eira", "era",
+  "ayra", …) so Whisper's spelling quirks don't matter. First greeting of the
+  day is warm; after that, "Yes, Rohit? What do you need?".
+- **Text too**: the popup and web UI (`http://localhost:8756`) share the same
+  session. Destructive commands (rm, sudo, kill, overwrites) show
+  **Approve / Deny** in the popup.
+- **Speech**: in = ffmpeg mic → Cloudflare Workers AI Whisper; out =
+  edge-tts → afplay. Cost is free-tier Cloudflare STT per clip + the brain call.
+- **Troubleshooting**: mic not hearing → System Settings → Privacy & Security →
+  Microphone → ensure **Aira** is enabled (not just Terminal). STT needs the
+  Cloudflare Workers AI key (set `DEEPSEEK_API_KEY` / base_url in `config.yaml`).
+
+Tune it in `config.yaml` → `voice:` (`hey_aira`, `poll_seconds`,
+`utterance_seconds`, `wake_words`, `stt_model`).
