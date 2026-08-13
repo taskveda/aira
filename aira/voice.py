@@ -53,6 +53,7 @@ _MIC_DEVICE = None
 _MIC_OK = None  # tri-state cache: None=untested, True/False from is_mic_available()
 _MIC_GUIDANCE_SHOWN = False
 _MIC_FAILS = 0    # consecutive record_mic failures (drives backoff)
+LISTENING = False # True while the mic is capturing (drives the UI voice-orb)
 
 
 def _ffmpeg_run(cmd, timeout):
@@ -161,6 +162,15 @@ def record_mic(out_path, seconds):
     the ffmpeg process is hard-killed and the mic cache is reset so the next
     is_mic_available() re-probes (e.g. right after the user grants access).
     """
+    global LISTENING
+    LISTENING = True
+    try:
+        return _record_mic(out_path, seconds)
+    finally:
+        LISTENING = False
+
+
+def _record_mic(out_path, seconds):
     global _MIC_FAILS
     device = detect_mic_device()
     try:
@@ -330,6 +340,10 @@ def run_voice(cfg):
     """Hands-free loop: listen for the wake word, then hear + do + speak."""
     from .brain import Brain
 
+    if not cfg.get("voice", {}).get("hey_aira", True):
+        print("[voice] 'hey_aira' is disabled in config.yaml — wake-word listening is off. Set voice.hey_aira: true to enable.")
+        return 0
+
     session = VoiceSession(cfg)
     brain = Brain(cfg, session.make_executor())
 
@@ -372,14 +386,14 @@ def run_voice(cfg):
                 print(f"[heard] {heard!r}")
                 if not heard or not is_wake(heard):
                     continue
-                # Woken up — greet, then listen for the task.
+                # Woken up — answer like Siri, then start listening for the task.
                 if first_greeting:
                     first_greeting = False
-                    greeting = _greeting(True)
+                    wake_reply = _greeting(True)          # "Hey Rohit, good morning. How are you doing?"
                 else:
-                    greeting = _greeting(False)
+                    wake_reply = "Yes, Rohit? What do you need?"
                 beep()
-                speak(greeting, cfg)
+                speak(wake_reply, cfg)
                 rec2 = record_mic(utterance, utter)
                 if not rec2["ok"]:
                     continue

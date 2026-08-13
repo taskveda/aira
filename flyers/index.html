@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aira — Flyer gallery</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .gallery { min-height:100vh; }
+  .gallery h1 { font-size:46px; margin-top:8px; }
+  .grid { margin-top:34px; display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:22px; }
+  .card { overflow:hidden; border-radius:var(--radius); background:var(--card); border:1px solid var(--line); text-decoration:none; color:inherit; transition:transform .18s, box-shadow .18s; display:flex; flex-direction:column; }
+  .card:hover { transform:translateY(-4px); box-shadow:0 24px 50px rgba(36,31,24,.14); }
+  .thumb { aspect-ratio:4/3; background:var(--bg-alt); position:relative; overflow:hidden; }
+  .thumb img { width:100%; height:100%; object-fit:cover; }
+  .thumb .no-png { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--ink-faint); font-size:13px; font-weight:600; }
+  .meta { padding:16px 18px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .meta .t { font-weight:800; font-size:16px; }
+  .meta .f { font-size:12px; font-weight:700; color:var(--brand-deep); }
+  .tagline { font-size:14px; color:var(--ink-soft); }
+  .head-note { display:flex; align-items:flex-start; gap:16px; }
+</style>
+</head>
+<body>
+<div class="flyer gallery">
+  <div class="head-note">
+    <div class="logo" style="align-items:flex-start">
+      <span class="logo-mark">A</span>
+      <div><div class="logo-word">Aira</div><div class="logo-tag">Your AI chief of staff</div></div>
+    </div>
+  </div>
+  <h1>Flyer gallery</h1>
+  <p class="sub tagline" style="max-width:560px">Every Aira flyer, shared on the <code style="font-family:var(--font)">flyers/brand.css</code> system — beige canvas, SF Pro type, logo/tagline tokens.</p>
+
+  <div class="grid" id="grid"></div>
+  <footer class="foot"><span>TaskVeda × Aira — Flyer system</span></footer>
+</div>
+
+<script>
+const flyers = [
+  { file:"poster.html",     kind:"Poster",     title:"Delegated. Automated. Done." , png:"png/poster.png" },
+  { file:"ig.html",         kind:"Instagram",  title:"Say “Hey Aira”"             , png:"png/ig.png" },
+  { file:"ed.html",         kind:"Editorial",  title:"A person, not a prompt"      , png:"png/ed.png" },
+  { file:"slide.html",      kind:"Slide",      title:"What can Aira do?"           , png:"png/slide.png" },
+  { file:"carousel.html",   kind:"Carousel",   title:"Your day, delegated (6)"     , png:"png/carousel.png" },
+  { file:"ag.html",         kind:"Announcement",title:"It finally talks back."     , png:"png/ag.png" },
+  { file:"voice-1.html",    kind:"Voice",      title:"You talk. It answers."       , png:"png/voice-1.png" },
+  { file:"voice-2.html",    kind:"Voice",      title:"“Hey Aira” — it wakes."      , png:"png/voice-2.png" },
+];
+const grid = document.getElementById("grid");
+for (const f of flyers) {
+  const c = document.createElement("a");
+  c.className = "card"; c.href = f.file; c.target = "_blank";
+  c.innerHTML = `
+    <div class="thumb">${f.png?'<img loading="lazy" src="'+f.png+'" alt="'+f.title+'">':'<span class="no-png">no export yet</span>'}</div>
+    <div class="meta"><span class="t">${f.title}</span><span class="f">${f.kind}</span></div>`;
+  grid.appendChild(c);
+}
+</script>
+</body>
+</html>

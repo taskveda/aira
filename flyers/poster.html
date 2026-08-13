@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aira — Poster</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .poster { display:flex; flex-direction:column; justify-content:space-between; gap:40px; }
+  .mast { max-width: 940px; }
+  .mast h1 { font-size: 86px; letter-spacing:-1.6px; }
+  .mast h1 em { font-style:normal; color:var(--brand); }
+  .lede { font-size: 21px; max-width: 620px; margin-top: 26px; }
+  .rail { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .tile { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:26px; }
+  .tile .k { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.6px; color:var(--brand-deep); }
+  .tile h3 { margin-top:10px; font-size:20px; }
+  .tile p { margin-top:8px; font-size:14px; color:var(--ink-soft); line-height:1.55; }
+</style>
+</head>
+<body>
+<div class="flyer poster">
+  <header>
+    <div class="logo">
+      <span class="logo-mark">A</span>
+      <div>
+        <div class="logo-word">Aira</div>
+        <div class="logo-tag">Your AI chief of staff</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="mast">
+    <span class="kicker">Meet your AI chief of staff</span>
+    <h1>Delegated. <br><em>Automated.</em> Done.</h1>
+    <p class="lede sub">Aira lives on your Mac — listens, speaks, reads, writes, researches and runs your day so you don't have to.</p>
+  </main>
+
+  <div class="rail">
+    <div class="tile"><span class="k">Say it</span><h3>Hey Aira, voice first</h3><p>Speak aloud. Aira wakes, answers and listens back — Siri, but for real work.</p></div>
+    <div class="tile"><span class="k">Delegate it</span><h3>Real tools</h3><p>Files, shell, apps, web, email, schedule. Plain language in, finished work out.</p></div>
+    <div class="tile"><span class="k">Remember it</span><h3>Learns as you go</h3><p>Memory + reusable skills. It gets sharper with every task.</p></div>
+  </div>
+
+  <footer class="foot">
+    <span>TaskVeda × Aira</span>
+    <span><!-- tagline --></span>
+  </footer>
+</div>
+</body>
+</html>

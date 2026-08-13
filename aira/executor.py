@@ -34,6 +34,10 @@ class ToolExecutor:
         if handler is None:
             return {"ok": False, "error": f"Unknown tool: {tool}"}
         try:
+            if getattr(self.session, "status", None) is not None:
+                import re as _re
+                label = _re.sub(r"[^a-z]", " ", tool).strip()
+                self.session.status = f"acting: {label}"
             try:
                 return handler(args, force=force)
             except TypeError:

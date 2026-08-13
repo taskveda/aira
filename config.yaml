@@ -34,6 +34,12 @@ tts:
 safety:
   auto: false                        # true = never ask for approval (not recommended)
 
+voice:                               # "Hey Aira" hands-free mode
+  hey_aira: true                     # false = disable the wake-word listener (text/CLI still work)
+  poll_seconds: 2.5                  # how often to sample for the wake word
+  utterance_seconds: 10              # how long Aira listens for your task after waking
+  stt_model: "@cf/openai/whisper-large-v3-turbo"
+
 jobs:                                # scheduled tasks ("cron" is 5-field cron syntax)
   - name: morning_brief
     cron: "0 9 * * *"

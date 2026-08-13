@@ -22,6 +22,8 @@ class WebSession:
         self.messages = []
         self.resolvers = {}
         self.pending_question = None
+        self.status = "idle"          # idle | thinking | acting:<tool>
+        self.speaking = False         # voice playback / voice-orb state
 
     def post_text(self, text, channel_override=None):
         self.messages.append({"role": "system", "content": text})
@@ -95,6 +97,20 @@ class Handler(BaseHTTPRequestHandler):
                     if p.is_file():
                         files.append({"name": p.name, "size": p.stat().st_size, "modified": p.stat().st_mtime})
             return self._json({"files": files[:60]})
+        if self.path == "/api/status":
+            return self._json({
+                "state": Handler.session.status,
+                "speaking": Handler.session.speaking,
+                "listening": bool(getattr(voice, "LISTENING", False)),
+            })
+        if self.path == "/api/memory":
+            from . import memory_store
+            try:
+                return self._json({"memory": memory_store.bundle(), "facts": memory_store.query_facts(), "skills": memory_store.list_skills()})
+            except Exception as exc:
+                return self._json({"error": f"{type(exc).__name__}: {exc}"}, 500)
+        if self.path == "/api/settings":
+            return self._json({"hey_aira": bool(Handler.config.get("voice", {}).get("hey_aira", True))})
         if self.path.startswith("/api/audio/"):
             name = urllib.parse.unquote(self.path.rsplit("/", 1)[-1])
             audio = (AUDIO_DIR / name).resolve()
@@ -124,9 +140,12 @@ class Handler(BaseHTTPRequestHandler):
                 Handler.session.messages.append({"role": "assistant", "content": reply})
                 return self._json({"reply": reply})
             try:
+                Handler.session.status = "thinking"
                 reply = Handler.brain.respond([{"role": "user", "content": message}] + [{"role": "user", "content": m["content"]} for m in Handler.session.messages if m["role"] == "user"][:-1])
             except Exception as exc:
                 reply = f"Aira hit an error: {type(exc).__name__}: {exc}"
+            finally:
+                Handler.session.status = "idle"
             Handler.session.messages.append({"role": "assistant", "content": reply})
             return self._json({"reply": reply})
         if self.path == "/api/pending":

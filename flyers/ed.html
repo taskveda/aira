@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aira — Editorial</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .ed { display:grid; grid-template-columns: 1.1fr 1fr; min-height:calc(100vh - 112px); gap:48px; align-items:center; }
+  .ed-art { position:relative; aspect-ratio:3/4; background:var(--bg-alt); border-radius:var(--radius); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
+  .ed-art .orb { width:190px; height:190px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--brand-soft), var(--brand)); box-shadow:0 30px 80px rgba(79,124,255,.45); }
+  .ed-copy h1 { font-size:64px; }
+  .ed-copy h1 em { font-style:normal; color:var(--brand); }
+  .ed-copy p { margin-top:20px; font-size:18px; max-width:480px; }
+  .rules { margin-top:26px; display:grid; gap:12px; }
+  .rule { display:flex; gap:14px; align-items:flex-start; }
+  .rule b { min-width:26px; height:26px; border-radius:50%; background:var(--ink); color:var(--bg); display:inline-flex; align-items:center; justify-content:center; font-size:13px; }
+  .rule span { color:var(--ink-soft); font-size:15px; }
+</style>
+</head>
+<body>
+<header class="flyer" style="padding-bottom:0;min-height:0">
+  <div class="logo">
+    <span class="logo-mark">A</span>
+    <div><div class="logo-word">Aira</div><div class="logo-tag">Your AI chief of staff</div></div>
+  </div>
+</header>
+<div class="flyer" style="padding-top:24px">
+  <div class="ed">
+    <div class="ed-art"><div class="orb"></div></div>
+    <div class="ed-copy">
+      <span class="kicker">The chief of staff that never sleeps</span>
+      <h1>A <em>person,</em> <br>not a prompt.</h1>
+      <p class="sub">Delegate in plain language. Aira drafts, researches, remembers and executes — across Slack, voice and your Mac.</p>
+      <div class="rules">
+        <div class="rule"><b>1</b><span>Ask anything, in your voice</span></div>
+        <div class="rule"><b>2</b><span>It does the work and verifies it</span></div>
+        <div class="rule"><b>3</b><span>It remembers what matters to you</span></div>
+      </div>
+    </div>
+  </div>
+  <footer class="foot"><span>TaskVeda × Aira — Your AI chief of staff</span></footer>
+</div>
+</body>
+</html>

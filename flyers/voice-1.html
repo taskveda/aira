@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aira — Hey Aira (voice 1)</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .v1 { display:grid; grid-template-columns: 1fr 1.1fr; min-height:calc(100vh - 112px); gap:56px; align-items:center; }
+  .orbwrap { display:flex; flex-direction:column; align-items:center; gap:26px; }
+  .orb {
+    width:220px; height:220px; border-radius:50%;
+    background: radial-gradient(circle at 35% 28%, #ffffff55, transparent 45%),
+                conic-gradient(from 180deg, var(--brand), var(--accent), var(--brand));
+    position:relative;
+    animation: pulse 3.2s ease-in-out infinite;
+  }
+  .orb::before { content:""; position:absolute; inset:-26px; border-radius:50%; border:1px solid var(--line); animation: ring 3.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(79,124,255,.35);} 50%{transform:scale(1.05);box-shadow:0 0 0 26px rgba(79,124,255,0);} }
+  @keyframes ring { 0%{opacity:.9} 50%{opacity:0} 100%{opacity:.9} }
+  .capt {
+    display:flex; flex-direction:column; gap:14px; width:100%;
+  }
+  .bub { border-radius:18px; padding:16px 20px; font-size:16px; max-width:86%; }
+  .bub.you { background:var(--ink); color:var(--bg); align-self:flex-start; border-bottom-left-radius:6px; }
+  .bub.aira { background:var(--card); color:var(--ink); border:1px solid var(--line); align-self:flex-end; border-bottom-right-radius:6px; }
+  .bub small { display:block; margin-top:4px; font-size:11px; opacity:.6; font-weight:600; }
+</style>
+</head>
+<body>
+<header class="flyer" style="padding-bottom:0;min-height:0">
+  <div class="logo">
+    <span class="logo-mark">A</span>
+    <div><div class="logo-word">Aira</div><div class="logo-tag">Your AI chief of staff</div></div>
+  </div>
+</header>
+<div class="flyer" style="padding-top:24px">
+  <div class="v1">
+    <div class="orbwrap">
+      <span class="kicker">Hands-free assistant</span>
+      <div class="orb"></div>
+      <h1 style="font-size:52px;text-align:center">Just <em style="font-style:normal;color:var(--brand)">say it.</em></h1>
+    </div>
+    <div class="capt">
+      <div class="bub you">Hey Aira, what's urgent in my inbox?<small>you</small></div>
+      <div class="bub aira">Good morning Rohit. Three things need you — one reply ready to send, and a task I've already scheduled.<small>aira · spoken reply</small></div>
+      <div class="bub you">Great. Book my standup an hour later.<small>you</small></div>
+      <div class="bub aira">Done — moved to 11 AM, everyone notified. Anything else?<small>aira</small></div>
+    </div>
+  </div>
+  <footer class="foot"><span>TaskVeda × Aira — Your AI chief of staff</span></footer>
+</div>
+</body>
+</html>

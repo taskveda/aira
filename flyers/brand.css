@@ -1,0 +1,114 @@
+/* ============================================================
+   Aira flyer brand system
+   Beige canvas #f4eee1 · SF Pro type · logo/tagline tokens
+   Every flyer in /flyers imports this single stylesheet.
+   ============================================================ */
+
+:root {
+  /* ---- canvas ---- */
+  --bg: #f4eee1;            /* warm beige */
+  --bg-alt: #ece4d2;        /* deeper beige for panels */
+  --ink: #241f18;           /* near-black warm brown */
+  --ink-soft: #5b5243;      /* muted brown */
+  --ink-faint: #8a7f6c;     /* faint brown */
+
+  /* ---- brand ---- */
+  --brand: #4f7cff;         /* Aira blue */
+  --brand-deep: #3a5fd0;
+  --brand-soft: #dfe6ff;
+  --accent: #8b5cf6;        /* supporting violet */
+  --lime: #9ccb62;
+
+  /* ---- chrome ---- */
+  --line: rgba(36, 31, 24, .12);
+  --card: #ffffff;
+
+  /* ---- type ---- */
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+          "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  /* ---- logo / tagline tokens (override per flyer if needed) ---- */
+  --logo-src: none;
+  --logo-mark: "A";
+  --tagline: "Your AI chief of staff";
+  --radius: 22px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- logo mark (A) ---------- */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+}
+.logo-mark {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--brand), var(--accent));
+  color: #fff;
+  font-weight: 800;
+  font-size: 22px;
+  box-shadow: 0 8px 20px rgba(79, 124, 255, .35);
+}
+.logo-word { font-size: 20px; font-weight: 800; letter-spacing: -0.2px; }
+.logo-tag { font-size: 12px; color: var(--ink-faint); font-weight: 500; letter-spacing: .2px; }
+
+/* ---------- type ---------- */
+h1, h2, h3 { font-weight: 800; letter-spacing: -0.4px; line-height: 1.04; }
+.kicker {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 2.4px; color: var(--brand-deep);
+}
+.sub { color: var(--ink-soft); line-height: 1.55; }
+
+/* ---------- buttons / chips ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 22px; border-radius: 999px;
+  background: var(--ink); color: var(--bg);
+  font-weight: 700; font-size: 15px; text-decoration: none;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(36,31,24,.18); }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn.pill-brand { background: var(--brand); color: #fff; }
+.chip {
+  display: inline-block; padding: 6px 13px; border-radius: 999px;
+  background: var(--brand-soft); color: var(--brand-deep);
+  font-size: 12px; font-weight: 700;
+}
+
+/* ---------- generic flyer page frame ---------- */
+.flyer {
+  min-height: 100vh;
+  padding: 56px 64px;
+  position: relative;
+  overflow: hidden;
+}
+.flyer.grain::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+}
+
+/* ---------- footer ---------- */
+.foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding-top: 22px; border-top: 1px solid var(--line); margin-top: 22px;
+  font-size: 12.5px; color: var(--ink-faint); font-weight: 600;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 760px) {
+  .flyer { padding: 34px 24px; }
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aira — Carousel</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .car { display:flex; flex-direction:column; justify-content:space-between; min-height:calc(100vh - 112px); }
+  .car-head { display:flex; align-items:center; justify-content:space-between; }
+  .car-main { flex:1; display:flex; flex-direction:column; justify-content:center; gap:18px; max-width:900px; }
+  .car-main h1 { font-size:70px; }
+  .car-main h1 em { font-style:normal; color:var(--brand); }
+  .car-main .idx { font-size:15px; font-weight:800; color:var(--brand-deep); letter-spacing:2px; }
+  .steps { display:flex; gap:16px; margin-top:10px; }
+  .step { flex:1; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:24px; }
+  .step .n { width:34px; height:34px; border-radius:10px; background:var(--brand); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:800; }
+  .step h3 { margin-top:14px; font-size:19px; }
+  .step p { margin-top:8px; font-size:13.5px; color:var(--ink-soft); line-height:1.5; }
+  .car-foot { display:flex; align-items:center; gap:18px; }
+  .dots { display:flex; gap:8px; }
+  .dots i { width:9px; height:9px; border-radius:50%; background:var(--line); }
+  .dots i.on { background:var(--brand); }
+</style>
+</head>
+<body>
+<div class="flyer">
+  <div class="car">
+    <div class="car-head">
+      <div class="logo">
+        <span class="logo-mark">A</span>
+        <div><div class="logo-word">Aira</div><div class="logo-tag">Your AI chief of staff</div></div>
+      </div>
+      <span class="kicker">How it works</span>
+    </div>
+
+    <div class="car-main">
+      <span class="idx">SLIDE 02 / 04</span>
+      <h1>Three moves to <em>delegate anything.</em></h1>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><h3>Ask</h3><p>Speak or type what you need, in your own words.</p></div>
+        <div class="step"><span class="n">2</span><h3>Act</h3><p>Aira runs real tools — files, shell, email, web.</p></div>
+        <div class="step"><span class="n">3</span><h3>Learn</h3><p>It remembers and reuses what works.</p></div>
+      </div>
+    </div>
+
+    <div class="car-foot">
+      <div class="dots"><i class="on"></i><i></i><i></i><i></i></div>
+      <span style="color:var(--ink-faint);font-weight:700">Carousel</span>
+      <span style="font-weight:800;color:var(--brand)">→</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

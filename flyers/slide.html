@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aira — Slide</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  .slide { display:flex; flex-direction:column; justify-content:center; gap:28px; min-height:calc(100vh); }
+  .bar { height:8px; width:120px; border-radius:99px; background:linear-gradient(90deg,var(--brand),var(--accent)); }
+  .slide h1 { font-size:72px; }
+  .slide h1 em { font-style:normal; color:var(--brand); }
+  .cols { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:10px; }
+  .col { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:22px; }
+  .col .n { font-size:13px; font-weight:800; color:var(--brand-deep); }
+  .col h3 { margin-top:8px; font-size:19px; }
+  .col p { margin-top:6px; font-size:14px; color:var(--ink-soft); line-height:1.5; }
+  .pageno { position:absolute; bottom:40px; right:56px; font-size:14px; font-weight:700; color:var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="flyer slide">
+  <span class="bar"></span>
+  <header>
+    <div class="logo">
+      <span class="logo-mark">A</span>
+      <div><div class="logo-word">Aira</div><div class="logo-tag">Your AI chief of staff</div></div>
+    </div>
+  </header>
+  <h1>What can <em>Aira</em> do?</h1>
+  <p class="sub" style="max-width:600px;font-size:19px">One assistant. Every chore. Ask in plain language, get finished work back.</p>
+  <div class="cols">
+    <div class="col"><span class="n">01</span><h3>Voice-first</h3><p>Wake it with "Hey Aira" and it answers out loud, then starts listening.</p></div>
+    <div class="col"><span class="n">02</span><h3>Runs your laptop</h3><p>Files, shell, apps, web research and email — executed and verified.</p></div>
+    <div class="col"><span class="n">03</span><h3>Remembers</h3><p>Facts and skills persist, so it gets better with every task.</p></div>
+  </div>
+  <span class="pageno">01</span>
+</div>
+</body>
+</html>
