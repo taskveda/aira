@@ -50,6 +50,14 @@ DENY_RE = re.compile(r"\b(?:no|nope|deny|cancel|stop|don't|dont)\b", re.IGNORECA
 
 
 _MIC_DEVICE = None
+_MIC_OK = None  # tri-state cache: None=untested, True/False from is_mic_available()
+
+
+def reset_mic_cache():
+    """Forget the availability/device caches so a later call re-probes (use
+    when the user may have just granted mic permission)."""
+    global _MIC_OK
+    _MIC_OK = None
 
 
 def detect_mic_device():
@@ -82,24 +90,65 @@ def detect_mic_device():
     return _MIC_DEVICE
 
 
-def record_mic(out_path, seconds):
-    """Record <seconds> of mono 16k PCM from the built-in mic via ffmpeg."""
+def is_mic_available():
+    """True if ffmpeg can actually open the built-in mic right now.
+
+    The pre-check matters: under launchd / without mic permission, ffmpeg
+    silently BLOCKS on -i :0 forever instead of erroring, which previously
+    made the wake-word loop spin on 22s timeouts forever. We probe once with a
+    hard subprocess timeout and cache the result so voice fails fast (and the
+    rest of Aira keeps working) instead of drowning the logs.
+    """
+    global _MIC_OK
+    if _MIC_OK is not None:
+        return _MIC_OK
     device = detect_mic_device()
-    proc = subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-f", "avfoundation", "-i", device,
-         "-t", str(seconds), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(out_path)],
-        capture_output=True, text=True, timeout=seconds + 20,
-    )
+    probe = Path(tempfile.mktemp(suffix=".probe.wav"))
+    try:
+        proc = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-f", "avfoundation", "-i", device,
+             "-t", "0.3", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(probe)],
+            capture_output=True, text=True, timeout=4,
+        )
+        _MIC_OK = proc.returncode == 0 and probe.exists() and probe.stat().st_size > 0
+    except subprocess.TimeoutExpired:
+        _MIC_OK = False
+    except Exception:
+        _MIC_OK = False
+    probe.unlink(missing_ok=True)
+    if not _MIC_OK:
+        print("[mic] mic unavailable (permission or no device). Voice wake disabled; text/Slack still work.")
+    return _MIC_OK
+
+
+def record_mic(out_path, seconds):
+    """Record <seconds> of mono 16k PCM from the built-in mic via ffmpeg.
+
+    Fails fast (short probe timeout) if the mic can't be opened so a broken
+    mic can never wedge the wake-word loop into 22s timeouts.
+    """
+    device = detect_mic_device()
+    try:
+        proc = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-f", "avfoundation", "-i", device,
+             "-t", str(seconds), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(out_path)],
+            capture_output=True, text=True, timeout=seconds + 6,
+        )
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "mic record timed out (check mic permission for this app)"}
     if proc.returncode != 0:
         print(f"[record_mic] ffmpeg failed with code {proc.returncode}, stderr={proc.stderr}, stdout={proc.stdout}")
     ok = proc.returncode == 0 and Path(out_path).exists() and Path(out_path).stat().st_size > 0
     if not ok:
         # Last resort: fall back to the classic 'default'.
-        proc = subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-f", "avfoundation", "-i", "default",
-             "-t", str(seconds), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(out_path)],
-            capture_output=True, text=True, timeout=seconds + 20,
-        )
+        try:
+            proc = subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-f", "avfoundation", "-i", "default",
+                 "-t", str(seconds), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(out_path)],
+                capture_output=True, text=True, timeout=seconds + 6,
+            )
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": "mic record timed out (check mic permission for this app)"}
         if proc.returncode != 0:
             print(f"[record_mic] fallback failed with code {proc.returncode}, stderr={proc.stderr}, stdout={proc.stdout}")
         ok = proc.returncode == 0 and Path(out_path).exists() and Path(out_path).stat().st_size > 0
@@ -248,11 +297,19 @@ def run_voice(cfg):
     history = []
 
     print('Aira voice mode — say "Hey Aira" to wake me. Ctrl+C to stop.')
+    mic_ok = is_mic_available()
+    if not mic_ok:
+        print("[voice] microphone unavailable (permission/device) — check System Settings → Privacy → Microphone.")
     with tempfile.TemporaryDirectory() as tmpdir:
         probe = Path(tmpdir) / "probe.wav"
         utterance = Path(tmpdir) / "utterance.wav"
         while True:
             try:
+                if not mic_ok:
+                    time.sleep(15)
+                    reset_mic_cache()
+                    mic_ok = is_mic_available()
+                    continue
                 rec = record_mic(probe, poll)
                 if not rec["ok"]:
                     print(f"[mic] {rec['error']} — check mic permission for the terminal app")

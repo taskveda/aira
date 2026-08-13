@@ -72,11 +72,19 @@ def run_assistant(cfg):
     first_greeting = True
 
     print('Aira wake-word listener on — say "Hey Aira" to summon + talk. Ctrl+C to stop.')
+    mic_ok = voice_mod.is_mic_available()
+    if not mic_ok:
+        print("[assistant] microphone unavailable — running text-only (popup/browser still works).")
     with tempfile.TemporaryDirectory() as tmpdir:
         probe = Path(tmpdir) / "probe.wav"
         utterance = Path(tmpdir) / "utterance.wav"
         while True:
             try:
+                if not mic_ok:
+                    time.sleep(15)
+                    voice_mod.reset_mic_cache()
+                    mic_ok = voice_mod.is_mic_available()
+                    continue
                 rec = voice_mod.record_mic(probe, poll)
                 if not rec["ok"]:
                     print(f"[mic] {rec['error']} — check mic permission for the terminal app")

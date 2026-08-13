@@ -193,3 +193,16 @@ class ToolExecutor:
         channel = args.get("channel") or self.config.digest_channel()
         self.session.post_text(f"*[Aira → {channel}]*\n{args.get('text', '')}", channel_override=channel)
         return {"ok": True, "channel": channel}
+
+    def memory_add(self, args):
+        from . import memory_store
+        return memory_store.add_fact(args.get("text", ""), source="assistant")
+
+    def memory_forget(self, args):
+        from . import memory_store
+        return memory_store.forget_fact(args.get("needle", ""))
+
+    def learn_skill(self, args):
+        from . import memory_store
+        return memory_store.learn_skill(
+            args.get("name", ""), args.get("description", ""), args.get("recipe", ""), tags=args.get("tags"))

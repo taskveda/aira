@@ -36,7 +36,14 @@ VOICE MODE (you are spoken, not typed):
 - Finish with one clear next action if there is one. No filler words, no "as an AI", no hedging.
 - Numbers and names: say them simply so they're easy to hear.
 - If he's angry or rushed: match him — short, done, next.
-- Greeting (first time each day): "Yo, I'm Aira. What are we building today?" After that, no greetings — straight to work."""
+- Greeting (first time each day): "Yo, I'm Aira. What are we building today?" After that, no greetings — straight to work.
+
+MEMORY & LEARNING (Letta-style, you CAN edit your own memory):
+- You have a persistent memory block injected above. Use it, don't re-ask.
+- Important new durable facts (preferences, projects, constraints) → call memory_add.
+- To stop remembering something → memory_forget.
+- When you discover a reusable multi-step recipe after doing a real task, save it with learn_skill(name, description, recipe) so next time is one step, not ten.
+- Never invent memory content. Only store what you actually did or were told."""
 
 TOOLS = [
     {
@@ -190,6 +197,39 @@ TOOLS = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "memory_add",
+            "description": "Remember a durable fact about Rohit or the work (project state, preferences, decisions). Stored permanently and injected into context on future tasks.",
+            "parameters": {"type": "object", "properties": {"text": {"type": "string", "description": "The fact to remember, one clean sentence."}}, "required": ["text"]},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "memory_forget",
+            "description": "Stop remembering any stored facts containing the given text.",
+            "parameters": {"type": "object", "properties": {"needle": {"type": "string"}}, "required": ["needle"]},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "learn_skill",
+            "description": "Save a reusable multi-step recipe you just did well, so future tasks reuse it instead of rebuilding from scratch. Call with a short name, a one-line description, and the copy-pasteable recipe.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "recipe": {"type": "string", "description": "The step-by-step recipe/value-adding play"},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["name", "description", "recipe"],
+            },
+        },
+    },
 ]
 
 JSON_FALLBACK = """You are Aira, a personal AI assistant with full laptop access.
@@ -275,10 +315,32 @@ class Brain:
 
     def run(self, messages, max_iters=10):
         persona = _persona()
-        system = SYSTEM_PROMPT + (f"\n\n--- ROHIT'S LIVE CONTEXT (read only, local) ---\n{persona}" if persona else "")
+        extra = ""
+        try:
+            from .memory_store import bundle
+            mem = bundle()
+            if mem:
+                extra = f"\n\n--- AIRA'S PERSISTENT MEMORY (you can edit via tools) ---\n{mem}"
+        except Exception:
+            pass
+        system = SYSTEM_PROMPT + (f"\n\n--- ROHIT'S LIVE CONTEXT (read only, local) ---\n{persona}" if persona else "") + extra
         msgs = [{"role": "system", "content": system}] + messages
         last_call = None
         repeat = 0
+        reply = ""
+        try:
+            reply = self._run_loop(msgs, max_iters, last_call, repeat)
+            self._maybe_learn(messages, msgs)
+            return reply
+        finally:
+            try:
+                from .memory_store import auto_remember
+                user_txt = " ".join(m.get("content", "") for m in messages if m.get("role") == "user")
+                auto_remember(user_txt, str(reply))
+            except Exception:
+                pass
+
+    def _run_loop(self, msgs, max_iters, last_call, repeat):
         for _ in range(max_iters):
             if self.ollama:
                 content, calls = self.ollama.chat(msgs, tools=TOOLS)
@@ -371,21 +433,63 @@ class Brain:
         msgs.append({"role": "user", "content": "The task is done and the tool results are above. Write the final reply to the user now: 2-4 short sentences — what you did, the top findings, and the exact file path if one was created. Stay in Aira's voice."})
         return self.complete(msgs, temperature=0.3)
 
+    def _maybe_learn(self, messages, msgs):
+        """Hermes-style: if the task used several tools and ended cleanly, capture
+        the user wording + outcome as a breadcrumb skill so future runs reuse it.
+        Deliberately lightweight — never calls the model; just stores a fact."""
+        try:
+            used = sum(1 for m in msgs if m.get("role") == "tool")
+            if used < 3:
+                return
+            from .memory_store import add_fact
+            user_txt = " ".join(m.get("content", "") for m in messages if m.get("role") == "user").strip()
+            if not user_txt:
+                return
+            add_fact(
+                f"[skill-signal] multi-tool task completed ({used} calls): {user_txt[:160]}",
+                source="skill-signal", ttl_days=21)
+        except Exception:
+            pass
+
     def respond(self, messages):
         """Multi-agent orchestration: Swarm for tools, direct chat for talk."""
         from .swarm import Swarm
+        from .memory_store import add_fact, forget_fact
 
-        user_text = " ".join(m["content"] for m in messages if m["role"] == "user")
+        user_text = " ".join(m["content"] for m in messages if m["role"] == "user").strip()
+
+        # --- deterministic memory/skill intents (no model drift) ---
+        low = user_text.lower()
+        if low.startswith(("remember ", "remember that", "remind me", "save this", "note that", "store this")):
+            fact = re.sub(r"^(?:remember|remind me|save this|note that|store this)\b[:\s,]*", "", user_text, flags=re.I).strip()
+            fact = re.sub(r"^that\s+", "", fact, flags=re.I).strip()
+            if fact:
+                add_fact(fact, source="user")
+                return f"Got it — saved: {fact}"
+            return "What should I remember?"
+        mf = re.match(r"^(?:forget|stop remembering|remove from memory)\s+(.+)$", user_text, flags=re.I)
+        if mf:
+            removed = forget_fact(mf.group(1))
+            return f"Forgot {removed['removed']} matching fact(s)."
+
         plan = self.complete(
             [
-                {"role": "system", "content": "You are a planner. Reply with exactly ONE word: TOOLS if the user's request needs any tool (research, files, shell, apps, web, email, time, tts, notify), or CHAT if it can be answered from knowledge alone."},
+                {"role": "system", "content": "You are a planner. Reply with exactly ONE word: TOOLS if the user's request needs any tool (research, files, shell, apps, web, email, time, tts, notify, or MEMORY operations like remember/forget/save skill), or CHAT if it can be answered from knowledge alone."},
                 {"role": "user", "content": user_text},
             ],
             temperature=0.0,
         ).strip().upper()
         if plan.startswith("CHAT"):
             persona = _persona()
-            system = SYSTEM_PROMPT + (f"\n\n--- ROHIT'S LIVE CONTEXT (read only, local) ---\n{persona}" if persona else "")
+            extra = ""
+            try:
+                from .memory_store import bundle
+                mem = bundle()
+                if mem:
+                    extra = f"\n\n--- AIRA'S PERSISTENT MEMORY (you can edit via tools) ---\n{mem}"
+            except Exception:
+                pass
+            system = SYSTEM_PROMPT + (f"\n\n--- ROHIT'S LIVE CONTEXT (read only, local) ---\n{persona}" if persona else "") + extra
             return _clean(self.complete([{"role": "system", "content": system}] + messages, temperature=0.5))
         return Swarm(self, self.executor).run(messages)
 
