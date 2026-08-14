@@ -89,6 +89,7 @@ def main(argv=None):
 
     if cfg.get("email", {}).get("enabled"):
         watcher = EmailWatcher(cfg, brain_factory, post_client=app.client)
+        app._aira_ack_handler = watcher.ack   # wire the Slack 'Got it' button
         import threading
         threading.Thread(target=watcher.run, daemon=True).start()
 

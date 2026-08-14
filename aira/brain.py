@@ -484,31 +484,35 @@ class Brain:
         for _ in range(max_iters):
             if self.ollama:
                 content, calls = self.ollama.chat(msgs, tools=TOOLS)
+                # JSON-mode tool call produced by the model
                 if content:
                     parsed = _parse_json_tool(content)
                     if parsed:
                         result = self.executor.dispatch(parsed.get("name"), parsed.get("arguments") or {})
                         msgs.append({"role": "user", "content": f"Tool {parsed.get('name')} returned: " + json.dumps(result, default=str)[:12000]})
                         continue
+                # Native Ollama tool calls -> execute each and feed results back
+                if calls:
+                    msgs.append({"role": "assistant", "content": content or "", "tool_calls": calls})
+                    for call in calls:
+                        fn = call.get("function", {})
+                        name = fn.get("name")
+                        raw_args = fn.get("arguments") or {}
+                        if isinstance(raw_args, str):
+                            try:
+                                args = json.loads(raw_args)
+                            except json.JSONDecodeError:
+                                args = {}
+                        else:
+                            args = raw_args
+                        result = self.executor.dispatch(name, args)
+                        msgs.append({"role": "tool", "tool_call_id": call.get("id", ""), "content": json.dumps(result, default=str)[:12000]})
+                    continue
+                # Plain text reply
+                if content:
                     msgs.append({"role": "assistant", "content": content})
-                return _clean(content)
-                if not calls:
-                    return "I could not generate a response. The local model may need retuning — try DeepSeek."
-                msgs.append({"role": "assistant", "content": content, "tool_calls": calls})
-                for call in calls:
-                    fn = call.get("function", {})
-                    name = fn.get("name")
-                    raw_args = fn.get("arguments") or {}
-                    if isinstance(raw_args, str):
-                        try:
-                            args = json.loads(raw_args)
-                        except json.JSONDecodeError:
-                            args = {}
-                    else:
-                        args = raw_args
-                    result = self.executor.dispatch(name, args)
-                    msgs.append({"role": "tool", "tool_call_id": call.get("id", ""), "content": json.dumps(result, default=str)[:12000]})
-                continue
+                    return _clean(content)
+                return "I could not generate a response. The local model may need retuning — try DeepSeek."
             if self.tool_supported:
                 try:
                     resp = self.client.chat.completions.create(model=self.model, messages=msgs, tools=TOOLS, temperature=0.4, max_tokens=2048)

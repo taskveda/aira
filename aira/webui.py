@@ -168,6 +168,14 @@ class Handler(BaseHTTPRequestHandler):
                 "files": len(_file_list()),
                 "tasks_done": sum(1 for r in tasks if r.get("done")),
             })
+        if self.path.startswith("/api/knowledge"):
+            parsed = urllib.parse.urlparse(self.path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            q = (qs.get("q") or [""])[0]
+            if q:
+                limit = int((qs.get("limit") or ["5"])[0])
+                return self._json(productivity.knowledge_search(q, limit=limit))
+            return self._json({"items": productivity.knowledge_list()})
         if self.path.startswith("/api/audio/"):
             name = urllib.parse.unquote(self.path.rsplit("/", 1)[-1])
             audio = (AUDIO_DIR / name).resolve()

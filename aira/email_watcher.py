@@ -129,17 +129,25 @@ class EmailWatcher:
             notifier.post_blocks(self.post_client, channel, notifier.ack_blocks(digest_id), text="Digest — mark as read")
         else:
             print(text)
-        self.acked.add(digest_id)
         escalate_min = int(self.config.get("email", {}).get("escalate_minutes", 30))
         threading.Timer(escalate_min * 60, self._escalate, args=(digest_id, text)).start()
+
+    def ack(self, digest_id):
+        """Mark a digest as read (called by the Slack 'Got it' button)."""
+        self.acked.add(digest_id)
 
     def _escalate(self, digest_id, text):
         if digest_id in self.acked:
             return
+        # Remember we already paged, so a single digest only escalates once.
+        self.acked.add(digest_id)
         webhook = self.config.discord_webhook()
         ok = notifier.discord_post(webhook, f"[ESCALATED — unread digest] {text}") if webhook else False
-        if ok and self.post_client:
-            notifier.post_text(self.post_client, self.config.digest_channel(), "Digest still unread — escalated to Discord.")
+        if self.post_client:
+            if ok:
+                notifier.post_text(self.post_client, self.config.digest_channel(), "Digest still unread — escalated to Discord.")
+            else:
+                notifier.post_text(self.post_client, self.config.digest_channel(), "Digest still unread — but Discord escalation is not configured (no RAS_DISCORD_WEBHOOK).")
 
     def _parse_array(self, content):
         try:

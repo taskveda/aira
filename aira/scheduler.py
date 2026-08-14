@@ -15,18 +15,23 @@ class Scheduler:
         self._running = True
 
     def run(self):
+        # Store each job's *next scheduled* time. Fire exactly when `now`
+        # reaches it, then advance to the following occurrence. This runs a job
+        # once per cron occurrence (the original code never fired at all).
+        next_times = {}
         while self._running:
             now = datetime.now()
             self._check_reminders()
             for job in self.config.get("jobs", []):
                 expr = job.get("cron")
+                name = job.get("name") or expr
                 if not expr:
                     continue
-                it = croniter(expr, now)
-                next_run = it.get_next(datetime)
-                if next_run <= now:
+                if name not in next_times:
+                    next_times[name] = croniter(expr, now).get_next(datetime)
+                if now >= next_times[name]:
                     threading.Thread(target=self._execute, args=(job,), daemon=True).start()
-                    it = croniter(expr, now)
+                    next_times[name] = croniter(expr, next_times[name]).get_next(datetime)
             time.sleep(30)
 
     def _check_reminders(self):

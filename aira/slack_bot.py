@@ -70,6 +70,16 @@ def create_bot(config, brain_factory=None):
     def make_session(client, channel, thread_ts):
         return SlackSession(client, channel, thread_ts)
 
+    sessions = {}
+
+    def get_session(client, channel, thread_ts):
+        """Return the shared session for a thread (same object the task thread
+        uses) so approval buttons resolve the waiting approval event."""
+        key = (channel, thread_ts)
+        if key not in sessions:
+            sessions[key] = make_session(client, channel, thread_ts)
+        return sessions[key]
+
     @app.event("message")
     @app.event("app_mention")
     def handle(event, say, client):
@@ -88,7 +98,7 @@ def create_bot(config, brain_factory=None):
 
     def run_task(client, channel, thread_ts, text):
         try:
-            session = make_session(client, channel, thread_ts)
+            session = get_session(client, channel, thread_ts)
             executor = ToolExecutor(session, config)
             executor_holder["executor"] = executor
             brain = brain_factory(executor) if brain_factory else Brain(config, executor)
@@ -136,10 +146,7 @@ def create_bot(config, brain_factory=None):
         thread_ts = message.get("thread_ts") or message.get("ts")
         if not channel:
             return None
-        key = (channel, thread_ts)
-        if key not in sessions:
-            sessions[key] = make_session(client, channel, thread_ts)
-        return sessions[key]
+        return get_session(client, channel, thread_ts)
 
     app._aira_ack_handler = None
     return app, executor_holder
