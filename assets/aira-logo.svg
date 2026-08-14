@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1402" height="1122" viewBox="0 0 1402 1122" role="img" aria-label="Aira">
+  <defs>
+    <radialGradient id="sphere" cx="0.36" cy="0.30" r="0.95" fx="0.30" fy="0.24">
+      <stop offset="0%" stop-color="#dfe9ff"/>
+      <stop offset="22%" stop-color="#8fb0ff"/>
+      <stop offset="48%" stop-color="#5d3cff"/>
+      <stop offset="74%" stop-color="#9a3bff"/>
+      <stop offset="100%" stop-color="#ff6fb0"/>
+    </radialGradient>
+    <radialGradient id="gloss" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="0.5" cy="0.42" r="0.6">
+      <stop offset="0%" stop-color="#f2f6ff" stop-opacity="0.5"/>
+      <stop offset="70%" stop-color="#c9b8ff" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#c9b8ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wordmark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#cdd6f5"/>
+    </linearGradient>
+    <filter id="halo" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+    <filter id="shadow" x="-40%" y="0%" width="180%" height="160%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+    <clipPath id="clip"><circle cx="701" cy="505" r="352"/></clipPath>
+  </defs>
+
+  <!-- Black background -->
+  <rect width="1402" height="1122" fill="#0a0a12"/>
+
+  <!-- Soft ambient halo -->
+  <circle cx="701" cy="505" r="410" fill="url(#sphere)" opacity="0.26" filter="url(#halo)"/>
+
+  <!-- Contact shadow beneath the sphere -->
+  <ellipse cx="701" cy="900" rx="300" ry="48" fill="#000000" opacity="0.6" filter="url(#shadow)"/>
+
+  <!-- Glass sphere body -->
+  <circle cx="701" cy="505" r="352" fill="url(#sphere)"/>
+
+  <!-- Gentle inner light -->
+  <circle cx="701" cy="495" r="342" fill="url(#core)" clip-path="url(#clip)"/>
+
+  <!-- Glass gloss, upper-left -->
+  <ellipse cx="560" cy="340" rx="240" ry="158" fill="url(#gloss)" transform="rotate(-20 560 340)" clip-path="url(#clip)"/>
+
+  <!-- Crisp specular highlight -->
+  <ellipse cx="528" cy="305" rx="68" ry="47" fill="#ffffff" opacity="0.85" transform="rotate(-20 528 305)" filter="url(#soft)"/>
+
+  <!-- Thin luminous rim on the lit edge -->
+  <path d="M 400 415 A 352 352 0 0 1 740 165"
+        fill="none" stroke="#eef3ff" stroke-width="10" stroke-linecap="round"
+        opacity="0.9" filter="url(#soft)" clip-path="url(#clip)"/>
+
+  <!-- Wordmark -->
+  <g transform="translate(0,0)">
+    <text x="701" y="930" text-anchor="middle"
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+          font-size="150" font-weight="700" letter-spacing="44"
+          fill="url(#wordmark)">AIRA</text>
+  </g>
+
+  <!-- Tagline -->
+  <text x="701" y="1018" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="44" font-weight="400" letter-spacing="26"
+        fill="#8a93bd">YOUR AI CO-FOUNDER</text>
+</svg>

@@ -8,11 +8,51 @@ from pathlib import Path
 
 from . import tts
 from . import voice
+from . import productivity
 from .brain import Brain
 from .config import AUDIO_DIR
 from .executor import ToolExecutor
 
 HOST, PORT = "127.0.0.1", 8756
+
+DATA_DIR = Path.home() / "aira" / "data"
+
+
+def now_iso():
+    from datetime import datetime
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def _file_list():
+    files = []
+    if DATA_DIR.exists():
+        for p in sorted(DATA_DIR.iterdir(), key=lambda p: -p.stat().st_mtime if p.is_file() else 0):
+            if p.is_file():
+                files.append({"name": p.name, "size": p.stat().st_size, "modified": p.stat().st_mtime})
+    return files[:60]
+
+
+def _save_settings(payload):
+    """Persist UI-settable runtime settings back to config.yaml (e.g. Hey Aira toggle)."""
+    import yaml
+    path = Path.home() / "aira" / "config.yaml"
+    raw = {}
+    if path.exists():
+        try:
+            raw = yaml.safe_load(path.read_text()) or {}
+        except Exception:
+            raw = {}
+    changed = False
+    if "hey_aira" in payload:
+        raw.setdefault("voice", {})["hey_aira"] = bool(payload["hey_aira"])
+        Handler.config.raw.setdefault("voice", {})["hey_aira"] = bool(payload["hey_aira"])
+        changed = True
+    if changed:
+        try:
+            path.write_text(yaml.safe_dump(raw, sort_keys=False))
+        except Exception as exc:
+            return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    return {"ok": True, **{k: v for k, v in payload.items()}}
 
 PAGE = (Path(__file__).parent / "webui_page.html").read_text(encoding="utf-8")
 
@@ -90,13 +130,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/pending":
             return self._json({"question": Handler.session.pending_question})
         if self.path == "/api/files":
-            data_dir = Path.home() / "aira" / "data"
-            files = []
-            if data_dir.exists():
-                for p in sorted(data_dir.iterdir(), key=lambda p: -p.stat().st_mtime if p.is_file() else 0):
-                    if p.is_file():
-                        files.append({"name": p.name, "size": p.stat().st_size, "modified": p.stat().st_mtime})
-            return self._json({"files": files[:60]})
+            return self._json({"files": _file_list()})
         if self.path == "/api/status":
             return self._json({
                 "state": Handler.session.status,
@@ -111,6 +145,29 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": f"{type(exc).__name__}: {exc}"}, 500)
         if self.path == "/api/settings":
             return self._json({"hey_aira": bool(Handler.config.get("voice", {}).get("hey_aira", True))})
+        if self.path == "/api/tasks":
+            tasks = productivity.reminder_list(include_done=True)
+            due = [r for r in tasks if not r.get("done") and r.get("due_at", "") <= now_iso()]
+            return self._json({"tasks": tasks, "pending": len(due), "done": sum(1 for r in tasks if r.get("done"))})
+        if self.path == "/api/calendar":
+            return self._json(productivity.calendar_list(days_ahead=7))
+        if self.path == "/api/knowledge":
+            return self._json({"items": productivity.knowledge_list()})
+        if self.path == "/api/automations":
+            jobs = Handler.config.get("jobs", []) or []
+            return self._json({"jobs": jobs})
+        if self.path == "/api/integrations":
+            return self._json(productivity.connector_status())
+        if self.path == "/api/insights":
+            from . import memory_store
+            skills = memory_store.list_skills()
+            tasks = productivity.reminder_list(include_done=True)
+            return self._json({
+                "skills": len(skills),
+                "facts": len(memory_store.query_facts()),
+                "files": len(_file_list()),
+                "tasks_done": sum(1 for r in tasks if r.get("done")),
+            })
         if self.path.startswith("/api/audio/"):
             name = urllib.parse.unquote(self.path.rsplit("/", 1)[-1])
             audio = (AUDIO_DIR / name).resolve()
@@ -160,6 +217,35 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 return self._json({"error": f"{type(exc).__name__}: {exc}"}, 500)
             return self._json({"url": f"/api/audio/{audio.name}"})
+        if self.path == "/api/tasks":
+            text = (payload.get("text") or "").strip()
+            due = (payload.get("due_at") or "").strip() or now_iso()
+            if not text:
+                return self._json({"error": "no text"}, 400)
+            return self._json(productivity.reminder_add(text, due))
+        if self.path == "/api/tasks/done":
+            rid = payload.get("id")
+            if rid is None:
+                return self._json({"error": "no id"}, 400)
+            return self._json(productivity.reminder_done(rid))
+        if self.path == "/api/calendar":
+            title = (payload.get("title") or "").strip()
+            start_at = (payload.get("start_at") or "").strip() or now_iso()
+            if not title:
+                return self._json({"error": "no title"}, 400)
+            return self._json(productivity.calendar_add(title, start_at))
+        if self.path == "/api/knowledge":
+            path = (payload.get("path") or "").strip()
+            if not path:
+                return self._json({"error": "no path"}, 400)
+            return self._json(productivity.knowledge_add(path))
+        if self.path == "/api/integrations":
+            name = (payload.get("name") or "").strip()
+            if not name:
+                return self._json({"error": "no name"}, 400)
+            return self._json(productivity.connector_enable(name, bool(payload.get("enabled", True))))
+        if self.path == "/api/settings":
+            return self._json(_save_settings(payload))
         self._json({"error": "not found"}, 404)
 
     def _stt(self):

@@ -215,6 +215,17 @@ def reminder_list(include_done=False):
     return [dict(r) for r in rows]
 
 
+def reminder_done(reminder_id):
+    """Mark a single reminder as done. Returns the updated record or None."""
+    with _lock:
+        conn = _connect()
+        cur = conn.execute("UPDATE reminders SET done=1 WHERE id=?", (reminder_id,))
+        conn.commit()
+        row = conn.execute("SELECT * FROM reminders WHERE id=?", (reminder_id,)).fetchone()
+        conn.close()
+    return dict(row) if row else None
+
+
 # ---------------------------------------------------------------------------
 # Knowledge base (local RAG — keyword index over your files)
 # ---------------------------------------------------------------------------
